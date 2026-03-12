@@ -15,8 +15,14 @@ actor CloudKitConfigSync {
     private let nameKey = "name"
     private let contentKey = "content"
     private let updatedAtKey = "updated_at"
+    private var recordTypeUnavailable = false
 
     func sync(localDirectory: URL) async throws -> Bool {
+        // CloudKit schema is missing in this container/environment; keep local mode.
+        if recordTypeUnavailable {
+            return false
+        }
+
         let remoteFiles = try await fetchRemoteConfigs()
         let localFiles = try loadLocalConfigs(from: localDirectory)
 
@@ -37,12 +43,26 @@ actor CloudKitConfigSync {
 
         for (name, local) in localFiles {
             guard let remote = remoteFiles[name] else {
-                try await upsertRemoteConfig(local)
+                do {
+                    try await upsertRemoteConfig(local)
+                } catch {
+                    if markRecordTypeUnavailableIfNeeded(error) {
+                        return localChanged
+                    }
+                    throw error
+                }
                 continue
             }
 
             if shouldOverwriteRemote(local: local, remote: remote) {
-                try await upsertRemoteConfig(local)
+                do {
+                    try await upsertRemoteConfig(local)
+                } catch {
+                    if markRecordTypeUnavailableIfNeeded(error) {
+                        return localChanged
+                    }
+                    throw error
+                }
             }
         }
 
@@ -63,7 +83,15 @@ actor CloudKitConfigSync {
 
     private func fetchRemoteConfigs() async throws -> [String: CloudConfigFile] {
         let query = CKQuery(recordType: recordType, predicate: NSPredicate(value: true))
-        let records = try await perform(query: query)
+        let records: [CKRecord]
+        do {
+            records = try await perform(query: query)
+        } catch {
+            if markRecordTypeUnavailableIfNeeded(error) {
+                return [:]
+            }
+            throw error
+        }
 
         var files: [String: CloudConfigFile] = [:]
         for record in records {
@@ -79,6 +107,29 @@ actor CloudKitConfigSync {
             files[name] = CloudConfigFile(name: name, content: content, updatedAt: updatedAt)
         }
         return files
+    }
+
+    private func markRecordTypeUnavailableIfNeeded(_ error: Error) -> Bool {
+        guard let ckError = error as? CKError, ckError.code == .unknownItem else {
+            return false
+        }
+
+        let userInfo = (ckError as NSError).userInfo
+        let serverMessage = (userInfo["ServerDescription"] as? String)
+            ?? (userInfo[NSDebugDescriptionErrorKey] as? String)
+            ?? ckError.localizedDescription
+
+        guard serverMessage.contains("Did not find record type"),
+              serverMessage.contains(recordType) else {
+            return false
+        }
+
+        if !recordTypeUnavailable {
+            recordTypeUnavailable = true
+            print("CloudKit schema unavailable: missing record type '\(recordType)'. Falling back to local-only config storage.")
+        }
+
+        return true
     }
 
     private func loadLocalConfigs(from directory: URL) throws -> [String: CloudConfigFile] {
