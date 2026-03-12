@@ -202,9 +202,13 @@ struct ContentView: View {
         HStack {
             Menu {
                 Section("配置文件") {
-                    // Show storage location with icon
-                    if let _ = FileManager.default.ubiquityIdentityToken {
-                        Label("存储位置: iCloud Drive", systemImage: "icloud")
+                    // Show storage mode with icon
+                    if configManager.cloudKitSyncEnabled {
+                        Label("存储方式: CloudKit 同步", systemImage: "icloud")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else if FileManager.default.ubiquityIdentityToken != nil {
+                        Label("存储位置: 本地（可启用 CloudKit）", systemImage: "internaldrive")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     } else {
@@ -252,8 +256,13 @@ struct ContentView: View {
                 
                 Divider()
                 
-                Button("同步到 iCloud") { configManager.migrateToiCloud() }
+                if configManager.cloudKitSyncEnabled {
+                    Button("关闭 CloudKit 同步") { configManager.disableCloudKitSync() }
+                } else {
+                    Button("同步到 iCloud") { configManager.migrateToiCloud() }
+                }
                 Button("选择文件夹") { configManager.selectCustomFolder() }
+                    .disabled(configManager.cloudKitSyncEnabled)
                 Button("在 Finder 中打开") { configManager.openiCloudFolder() }
 
                 

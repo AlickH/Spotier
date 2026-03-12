@@ -816,7 +816,26 @@
       }
     },
     "同步到 iCloud" : {
-
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enable CloudKit Sync"
+          }
+        }
+      }
+    },
+    "关闭 CloudKit 同步" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Disable CloudKit Sync"
+          }
+        }
+      }
     },
     "名称" : {
       "extractionState" : "manual",
@@ -1041,6 +1060,17 @@
         }
       }
     },
+    "存储位置: 本地（可启用 CloudKit）" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Storage: Local (CloudKit available)"
+          }
+        }
+      }
+    },
     "存储位置: 本地 (iCloud 未启用)" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1048,6 +1078,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Storage: Local (iCloud disabled)"
+          }
+        }
+      }
+    },
+    "存储方式: CloudKit 同步" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Storage: CloudKit Sync"
           }
         }
       }

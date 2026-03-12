@@ -90,12 +90,27 @@ class ConfigManager: ObservableObject {
     }
 
     func migrateToiCloud() {
+        guard !cloudKitSyncEnabled else { return }
+
         guard isICloudEnabled else {
             print("未检测到 iCloud 账户，无法启用 CloudKit 同步。")
             return
         }
 
         enableCloudKitSync()
+    }
+
+    func disableCloudKitSync() {
+        guard cloudKitSyncEnabled else { return }
+
+        cloudKitSyncEnabled = false
+        isCloudSyncInProgress = false
+
+        if customPathString.isEmpty, let targetDir = defaultLocalDirectory() {
+            customPathString = targetDir.path
+        }
+
+        _ = refreshConfigs(skipCloudSync: true)
     }
 
     @discardableResult
