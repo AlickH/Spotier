@@ -815,6 +815,9 @@
         }
       }
     },
+    "同步到 iCloud" : {
+
+    },
     "名称" : {
       "extractionState" : "manual",
       "localizations" : {

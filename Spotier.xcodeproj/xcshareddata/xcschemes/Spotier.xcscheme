@@ -35,20 +35,9 @@
             parallelizable = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "E0933DD82F16A26200C7DE59"
-               BuildableName = "SpotierTests.xctest"
-               BlueprintName = "SpotierTests"
-               ReferencedContainer = "container:Spotier.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
-         <TestableReference
-            skipped = "NO"
-            parallelizable = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "E0933DE22F16A26200C7DE59"
-               BuildableName = "SpotierUITests.xctest"
-               BlueprintName = "SpotierUITests"
+               BlueprintIdentifier = "E1AA00072F50000100AAA001"
+               BuildableName = "SpotierNETests.xctest"
+               BlueprintName = "SpotierNETests"
                ReferencedContainer = "container:Spotier.xcodeproj">
             </BuildableReference>
          </TestableReference>

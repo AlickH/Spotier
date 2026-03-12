@@ -15,7 +15,13 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     private var debounceWorkItem: DispatchWorkItem?
     private var parsedIPv4: String?      // from config.toml
     private var parsedSubnet: String?     // e.g. "255.255.255.0"
+    private var parsedIPv6: String?
+    private var parsedIPv6Prefix: Int?
     private var parsedMTU: Int?
+    private var parsedMagicDNS = false
+    private var parsedMagicDNSZone = "et.net"
+
+    private let magicDNSResolver = "100.100.100.101"
     
     // MARK: - Config Loading
     
@@ -37,6 +43,14 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     
     /// Parse ipv4 and mtu from TOML config for initial network settings
     private func parseConfigHints(_ toml: String) {
+        parsedIPv4 = nil
+        parsedSubnet = nil
+        parsedIPv6 = nil
+        parsedIPv6Prefix = nil
+        parsedMTU = nil
+        parsedMagicDNS = false
+        parsedMagicDNSZone = "et.net"
+
         for line in toml.components(separatedBy: .newlines) {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             if trimmed.hasPrefix("#") { continue }
@@ -56,8 +70,20 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
                         parsedSubnet = cidrToSubnetMask(cidr)
                     }
                 }
+            case "ipv6":
+                if let parsed = parseIPv6CIDR(val) {
+                    parsedIPv6 = parsed.address
+                    parsedIPv6Prefix = parsed.prefixLength
+                }
             case "mtu":
                 parsedMTU = Int(val)
+            case "enable_magic_dns", "accept_dns":
+                parsedMagicDNS = val.lowercased() == "true"
+            case "tld_dns_zone":
+                let zone = val.trimmingCharacters(in: CharacterSet(charactersIn: "."))
+                if !zone.isEmpty {
+                    parsedMagicDNSZone = zone
+                }
             default:
                 break
             }
@@ -220,67 +246,83 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     private func buildSettings() -> NEPacketTunnelNetworkSettings {
         let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "127.0.0.1")
         let runningInfo = fetchRunningInfo()
-        
-        // Determine IPv4 address: prefer running info, fallback to config
-        let ipv4Address: String
-        let subnetMask: String
 
-        
-        if let info = runningInfo,
-           let nodeIp = info.myNodeInfo?.virtualIPv4 {
-            ipv4Address = nodeIp.address.description
+        let runtimeIPv4 = runningInfo?.myNodeInfo?.virtualIPv4
+        let ipv4Address = runtimeIPv4?.address.description ?? parsedIPv4
+        let subnetMask = runtimeIPv4
+            .flatMap { cidrToSubnetMask($0.networkLength) }
+            ?? parsedSubnet
 
-            subnetMask = cidrToSubnetMask(nodeIp.networkLength) ?? "255.255.255.0"
-        } else if let configIp = parsedIPv4, let configMask = parsedSubnet {
-            ipv4Address = configIp
-            subnetMask = configMask
-        } else {
-            logger.warning("无 IPv4 地址可用，返回空设置")
-            return settings
-        }
-        
-        let ipv4Settings = NEIPv4Settings(addresses: [ipv4Address], subnetMasks: [subnetMask])
-        
-        // Build routes from running info
-        var routes: [NEIPv4Route] = []
-        
-        if let info = runningInfo {
-            // Add routes from peer proxy CIDRs
-            for route in info.routes {
-                for cidrStr in route.proxyCIDRs {
-                    if let parsed = parseCIDR(cidrStr) {
-                        routes.append(NEIPv4Route(
-                            destinationAddress: parsed.address,
-                            subnetMask: parsed.mask
-                        ))
+        if let ipv4Address, let subnetMask {
+            let ipv4Settings = NEIPv4Settings(addresses: [ipv4Address], subnetMasks: [subnetMask])
+            var routes: [NEIPv4Route] = []
+
+            if let info = runningInfo {
+                for route in info.routes {
+                    for cidrStr in route.proxyCIDRs {
+                        if let parsed = parseCIDR(cidrStr) {
+                            routes.append(NEIPv4Route(
+                                destinationAddress: parsed.address,
+                                subnetMask: parsed.mask
+                            ))
+                        }
                     }
                 }
+
+                if let nodeIp = info.myNodeInfo?.virtualIPv4 {
+                    let networkAddr = maskedAddress(nodeIp.address, networkLength: nodeIp.networkLength)
+                    let netMask = cidrToSubnetMask(nodeIp.networkLength) ?? "255.255.255.0"
+                    routes.append(NEIPv4Route(destinationAddress: networkAddr, subnetMask: netMask))
+                }
             }
-            
-            // Add the virtual network route
-            if let nodeIp = info.myNodeInfo?.virtualIPv4 {
-                let networkAddr = maskedAddress(nodeIp.address, networkLength: nodeIp.networkLength)
-                let netMask = cidrToSubnetMask(nodeIp.networkLength) ?? "255.255.255.0"
-                routes.append(NEIPv4Route(destinationAddress: networkAddr, subnetMask: netMask))
+
+            if routes.isEmpty {
+                let networkAddr = maskedAddressFromStrings(ipv4Address, mask: subnetMask)
+                routes.append(NEIPv4Route(destinationAddress: networkAddr, subnetMask: subnetMask))
             }
+
+            if parsedMagicDNS,
+               !routes.contains(where: { ipv4RouteContainsAddress(destination: $0.destinationAddress, subnetMask: $0.destinationSubnetMask, address: magicDNSResolver) }) {
+                routes.append(NEIPv4Route(destinationAddress: magicDNSResolver, subnetMask: "255.255.255.255"))
+            }
+
+            ipv4Settings.includedRoutes = routes
+            settings.ipv4Settings = ipv4Settings
         }
-        
-        // Fallback: if no routes from running info, use config subnet
-        if routes.isEmpty {
-            if let configIp = parsedIPv4, let configMask = parsedSubnet {
-                // Route only the virtual subnet, not all traffic
-                let networkAddr = maskedAddressFromStrings(configIp, mask: configMask)
-                routes.append(NEIPv4Route(destinationAddress: networkAddr, subnetMask: configMask))
-            } else {
-                // Last resort: still don't route all traffic to avoid breaking connectivity
-                routes.append(NEIPv4Route(destinationAddress: ipv4Address, subnetMask: "255.255.255.255"))
+
+        let runtimeIPv6 = runningInfo?.myNodeInfo?.virtualIPv6
+        let ipv6Address = runtimeIPv6?.address.description ?? parsedIPv6
+        let ipv6PrefixLength = runtimeIPv6?.networkLength ?? parsedIPv6Prefix
+
+        if let ipv6Address, let prefixLength = ipv6PrefixLength {
+            let ipv6Settings = NEIPv6Settings(
+                addresses: [ipv6Address],
+                networkPrefixLengths: [NSNumber(value: prefixLength)]
+            )
+            if let networkAddress = maskedIPv6Address(ipv6Address, networkLength: prefixLength) {
+                ipv6Settings.includedRoutes = [
+                    NEIPv6Route(
+                        destinationAddress: networkAddress,
+                        networkPrefixLength: NSNumber(value: prefixLength)
+                    )
+                ]
             }
+            settings.ipv6Settings = ipv6Settings
         }
-        
-        ipv4Settings.includedRoutes = routes
-        settings.ipv4Settings = ipv4Settings
+
+        if parsedMagicDNS {
+            let dnsSettings = NEDNSSettings(servers: [magicDNSResolver])
+            dnsSettings.searchDomains = [parsedMagicDNSZone]
+            dnsSettings.matchDomains = [parsedMagicDNSZone]
+            settings.dnsSettings = dnsSettings
+        }
+
         settings.mtu = NSNumber(value: parsedMTU ?? 1380)
-        
+
+        if settings.ipv4Settings == nil && settings.ipv6Settings == nil {
+            logger.warning("无可用 IP 地址，返回空设置")
+        }
+
         return settings
     }
     
@@ -411,31 +453,51 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 struct SettingsSnapshot: Equatable {
     var ipv4Addresses: [String]
     var ipv4SubnetMasks: [String]
-    var routes: [(String, String)]  // (destination, mask)
+    var ipv4Routes: [(String, String)]  // (destination, mask)
+    var ipv6Addresses: [String]
+    var ipv6PrefixLengths: [Int]
+    var ipv6Routes: [(String, Int)]
+    var dnsServers: [String]
+    var dnsSearchDomains: [String]
+    var dnsMatchDomains: [String]
     var mtu: Int?
     
     var hasIPAddresses: Bool {
-        !ipv4Addresses.isEmpty && ipv4Addresses.first?.isEmpty == false
+        (!ipv4Addresses.isEmpty && ipv4Addresses.first?.isEmpty == false)
+            || (!ipv6Addresses.isEmpty && ipv6Addresses.first?.isEmpty == false)
     }
     
     init(from settings: NEPacketTunnelNetworkSettings) {
         ipv4Addresses = settings.ipv4Settings?.addresses ?? []
         ipv4SubnetMasks = settings.ipv4Settings?.subnetMasks ?? []
-        routes = settings.ipv4Settings?.includedRoutes?.map {
+        ipv4Routes = settings.ipv4Settings?.includedRoutes?.map {
             ($0.destinationAddress, $0.destinationSubnetMask)
         } ?? []
+        ipv6Addresses = settings.ipv6Settings?.addresses ?? []
+        ipv6PrefixLengths = settings.ipv6Settings?.networkPrefixLengths.map(\.intValue) ?? []
+        ipv6Routes = settings.ipv6Settings?.includedRoutes?.map {
+            ($0.destinationAddress, $0.destinationNetworkPrefixLength.intValue)
+        } ?? []
+        dnsServers = settings.dnsSettings?.servers ?? []
+        dnsSearchDomains = settings.dnsSettings?.searchDomains ?? []
+        dnsMatchDomains = settings.dnsSettings?.matchDomains ?? []
         mtu = settings.mtu?.intValue
     }
     
     static func == (lhs: SettingsSnapshot, rhs: SettingsSnapshot) -> Bool {
         lhs.ipv4Addresses == rhs.ipv4Addresses &&
         lhs.ipv4SubnetMasks == rhs.ipv4SubnetMasks &&
-        lhs.routes.count == rhs.routes.count &&
-        zip(lhs.routes, rhs.routes).allSatisfy { $0.0 == $1.0 && $0.1 == $1.1 } &&
+        lhs.ipv4Routes.count == rhs.ipv4Routes.count &&
+        zip(lhs.ipv4Routes, rhs.ipv4Routes).allSatisfy { $0.0 == $1.0 && $0.1 == $1.1 } &&
+        lhs.ipv6Addresses == rhs.ipv6Addresses &&
+        lhs.ipv6PrefixLengths == rhs.ipv6PrefixLengths &&
+        lhs.ipv6Routes.count == rhs.ipv6Routes.count &&
+        zip(lhs.ipv6Routes, rhs.ipv6Routes).allSatisfy { $0.0 == $1.0 && $0.1 == $1.1 } &&
+        lhs.dnsServers == rhs.dnsServers &&
+        lhs.dnsSearchDomains == rhs.dnsSearchDomains &&
+        lhs.dnsMatchDomains == rhs.dnsMatchDomains &&
         lhs.mtu == rhs.mtu
     }
 }
 
 // MARK: - Network Utility Functions
-
-

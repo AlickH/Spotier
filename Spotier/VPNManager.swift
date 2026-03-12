@@ -20,6 +20,7 @@ class VPNManager: ObservableObject {
     }
     
     private var manager: NETunnelProviderManager?
+    private var pendingStartConfigContent: String?
     
     init() {
         loadPreferences()
@@ -43,6 +44,9 @@ class VPNManager: ObservableObject {
             
             if let error = error {
                 print("Error loading VPN preferences: \(error)")
+                DispatchQueue.main.async {
+                    self.statusText = "加载 VPN 配置失败: \(error.localizedDescription)"
+                }
                 return
             }
             
@@ -54,6 +58,7 @@ class VPNManager: ObservableObject {
                     self.updateStatusSync()
                     // 状态已就绪后再标记 isReady，确保后续逻辑能读到正确的 isConnected
                     self.isReady = true
+                    self.processPendingStartIfNeeded()
                     
                     // 仅在 On Demand 设置不一致时才 save，避免 saveToPreferences 导致系统重启隧道
                     let connectOnStart = (UserDefaults.standard.object(forKey: "connectOnStart") as? Bool) ?? true
@@ -92,12 +97,18 @@ class VPNManager: ObservableObject {
         manager.saveToPreferences { [weak self] error in
             if let error = error {
                 print("VPNManager: Error saving VPN profile: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    self?.statusText = "创建 VPN 配置失败: \(error.localizedDescription)"
+                }
             } else {
                 print("VPNManager: VPN Profile saved successfully.")
                 // 二次保存确保持久化
                 manager.saveToPreferences { error in
                     if let error = error {
                         print("VPNManager: Error on second save: \(error)")
+                        DispatchQueue.main.async {
+                            self?.statusText = "保存 VPN 配置失败: \(error.localizedDescription)"
+                        }
                     } else {
                         print("VPNManager: Second save successful.")
                     }
@@ -179,26 +190,16 @@ class VPNManager: ObservableObject {
     }
 
     func startVPN(configContent: String) {
-        guard let manager = manager else {
-            print("VPN Manager not ready")
+        guard let manager else {
+            print("VPN Manager not ready, queue start request")
+            DispatchQueue.main.async {
+                self.pendingStartConfigContent = configContent
+                self.statusText = "VPN 初始化中，已排队启动..."
+            }
+            loadPreferences()
             return
         }
-        
-        // 我们不直接通过 options 传递大文本，而是保存到 App Group
-        guard let _ = saveConfigToAppGroup(configContent: configContent) else {
-             self.statusText = "保存配置失败"
-             return
-        }
-        
-        let options: [String: NSObject] = [:] // Config is read from App Group file by NE
-        
-        do {
-            try manager.connection.startVPNTunnel(options: options)
-            print("VPN Start requested")
-        } catch {
-            print("Error starting VPN: \(error)")
-            self.statusText = "启动失败: \(error.localizedDescription)"
-        }
+        performStartVPN(using: manager, configContent: configContent)
     }
     
     func stopVPN() {
@@ -294,6 +295,39 @@ class VPNManager: ObservableObject {
             self.statusText = "重连中..."
         @unknown default:
             self.statusText = "未知状态"
+        }
+    }
+
+    private func processPendingStartIfNeeded() {
+        guard let manager, let pendingConfig = pendingStartConfigContent else { return }
+
+        switch manager.connection.status {
+        case .connected, .connecting, .reasserting:
+            pendingStartConfigContent = nil
+            return
+        default:
+            break
+        }
+
+        pendingStartConfigContent = nil
+        performStartVPN(using: manager, configContent: pendingConfig)
+    }
+
+    private func performStartVPN(using manager: NETunnelProviderManager, configContent: String) {
+        // 我们不直接通过 options 传递大文本，而是保存到 App Group
+        guard saveConfigToAppGroup(configContent: configContent) != nil else {
+            statusText = "保存配置失败"
+            return
+        }
+
+        let options: [String: NSObject] = [:] // Config is read from App Group file by NE
+
+        do {
+            try manager.connection.startVPNTunnel(options: options)
+            print("VPN Start requested")
+        } catch {
+            print("Error starting VPN: \(error)")
+            statusText = "启动失败: \(error.localizedDescription)"
         }
     }
 }

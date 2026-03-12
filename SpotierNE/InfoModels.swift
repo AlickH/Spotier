@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 struct RunningInfo: Decodable {
@@ -12,9 +13,11 @@ struct RunningInfo: Decodable {
 
 struct RunningNodeInfo: Decodable {
     var virtualIPv4: RunningIPv4CIDR?
+    var virtualIPv6: RunningIPv6CIDR?
 
     enum CodingKeys: String, CodingKey {
         case virtualIPv4 = "virtual_ipv4"
+        case virtualIPv6 = "virtual_ipv6"
     }
 }
 
@@ -82,4 +85,51 @@ struct RunningIPv4Addr: Decodable, Hashable {
     }
 }
 
+struct RunningIPv6CIDR: Decodable, Hashable {
+    var address: RunningIPv6Addr
+    var networkLength: Int
 
+    enum CodingKeys: String, CodingKey {
+        case address
+        case networkLength = "network_length"
+    }
+}
+
+struct RunningIPv6Addr: Decodable, Hashable {
+    var part1: UInt32
+    var part2: UInt32
+    var part3: UInt32
+    var part4: UInt32
+
+    var description: String {
+        var bytes = [UInt8]()
+        bytes.reserveCapacity(16)
+        bytes.append(contentsOf: part1.bigEndianBytes)
+        bytes.append(contentsOf: part2.bigEndianBytes)
+        bytes.append(contentsOf: part3.bigEndianBytes)
+        bytes.append(contentsOf: part4.bigEndianBytes)
+
+        var ipv6 = in6_addr()
+        withUnsafeMutableBytes(of: &ipv6) { destination in
+            bytes.withUnsafeBytes { source in
+                destination.copyBytes(from: source)
+            }
+        }
+
+        var buffer = [CChar](repeating: 0, count: Int(INET6_ADDRSTRLEN))
+        let result = inet_ntop(AF_INET6, &ipv6, &buffer, socklen_t(buffer.count))
+        guard result != nil else { return "::" }
+        return String(cString: buffer)
+    }
+}
+
+private extension UInt32 {
+    var bigEndianBytes: [UInt8] {
+        return [
+            UInt8((self >> 24) & 0xFF),
+            UInt8((self >> 16) & 0xFF),
+            UInt8((self >> 8) & 0xFF),
+            UInt8(self & 0xFF)
+        ]
+    }
+}

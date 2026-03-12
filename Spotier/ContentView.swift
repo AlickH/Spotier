@@ -252,7 +252,7 @@ struct ContentView: View {
                 
                 Divider()
                 
-                Button("存储到 iCloud") { configManager.migrateToiCloud() }
+                Button("同步到 iCloud") { configManager.migrateToiCloud() }
                 Button("选择文件夹") { configManager.selectCustomFolder() }
                 Button("在 Finder 中打开") { configManager.openiCloudFolder() }
 
@@ -487,11 +487,17 @@ struct ContentView: View {
                     if vpnManager.isConnected {
                         vpnManager.disableOnDemandAndStop()
                     } else {
+                        guard !selectedConfigPath.isEmpty else {
+                            vpnManager.statusText = "未选择配置文件"
+                            return
+                        }
+
                         // 通过 ConfigManager 读取（处理安全域书签）
                         let configURL = URL(fileURLWithPath: selectedConfigPath)
                         if let content = try? ConfigManager.shared.readConfigContent(configURL) {
                             vpnManager.startVPN(configContent: content)
                         } else {
+                            vpnManager.statusText = "读取配置失败: \(configURL.lastPathComponent)"
                             print("无法读取配置文件: \(selectedConfigPath)")
                         }
                     }
@@ -503,6 +509,7 @@ struct ContentView: View {
                     )
                 }
                 .buttonStyle(.plain)
+                .disabled(!vpnManager.isConnected && selectedConfigPath.isEmpty)
                 .zIndex(20)
                 
                 if runner.isRunning && runner.isWindowVisible {
@@ -660,8 +667,7 @@ struct ContentView: View {
     
     private func deleteSelectedConfig() {
         guard let url = selectedConfig else { return }
-        try? FileManager.default.removeItem(at: url)
-        configManager.refreshConfigs()
+        configManager.deleteConfig(url)
         
         // Auto select next if available is handled by onChange
     }
