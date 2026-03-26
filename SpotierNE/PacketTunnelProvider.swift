@@ -4,6 +4,16 @@ import os
 
 let debounceInterval: TimeInterval = 0.5
 
+private struct ConfigHints {
+    var ipv4: String?
+    var subnet: String?
+    var ipv6: String?
+    var ipv6Prefix: Int?
+    var mtu: Int?
+    var magicDNS = false
+    var magicDNSZone = "et.net"
+}
+
 class PacketTunnelProvider: NEPacketTunnelProvider {
     
     // Hold a weak reference for C callback bridging
@@ -12,21 +22,15 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     
     private var lastAppliedSettings: SettingsSnapshot?
     private var needReapplySettings = false
-    private var debounceWorkItem: DispatchWorkItem?
-    private var parsedIPv4: String?      // from config.toml
-    private var parsedSubnet: String?     // e.g. "255.255.255.0"
-    private var parsedIPv6: String?
-    private var parsedIPv6Prefix: Int?
-    private var parsedMTU: Int?
-    private var parsedMagicDNS = false
-    private var parsedMagicDNSZone = "et.net"
+    private var debounceTask: Task<Void, Never>?
+    private var configHints = ConfigHints()
 
     private let magicDNSResolver = "100.100.100.101"
     
     // MARK: - Config Loading
     
     private func loadConfig() -> String? {
-        guard let groupURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: APP_GROUP_ID) else {
+        guard let groupURL = appGroupContainerURL() else {
             logger.error("无法访问 App Group 容器: \(APP_GROUP_ID)")
             return nil
         }
@@ -43,13 +47,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     
     /// Parse ipv4 and mtu from TOML config for initial network settings
     private func parseConfigHints(_ toml: String) {
-        parsedIPv4 = nil
-        parsedSubnet = nil
-        parsedIPv6 = nil
-        parsedIPv6Prefix = nil
-        parsedMTU = nil
-        parsedMagicDNS = false
-        parsedMagicDNSZone = "et.net"
+        var hints = ConfigHints()
 
         for line in toml.components(separatedBy: .newlines) {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -65,29 +63,31 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
                 // e.g. "10.126.126.1/24"
                 let cidrParts = val.split(separator: "/")
                 if cidrParts.count == 2 {
-                    parsedIPv4 = String(cidrParts[0])
+                    hints.ipv4 = String(cidrParts[0])
                     if let cidr = Int(cidrParts[1]) {
-                        parsedSubnet = cidrToSubnetMask(cidr)
+                        hints.subnet = cidrToSubnetMask(cidr)
                     }
                 }
             case "ipv6":
                 if let parsed = parseIPv6CIDR(val) {
-                    parsedIPv6 = parsed.address
-                    parsedIPv6Prefix = parsed.prefixLength
+                    hints.ipv6 = parsed.address
+                    hints.ipv6Prefix = parsed.prefixLength
                 }
             case "mtu":
-                parsedMTU = Int(val)
+                hints.mtu = Int(val)
             case "enable_magic_dns", "accept_dns":
-                parsedMagicDNS = val.lowercased() == "true"
+                hints.magicDNS = val.lowercased() == "true"
             case "tld_dns_zone":
                 let zone = val.trimmingCharacters(in: CharacterSet(charactersIn: "."))
                 if !zone.isEmpty {
-                    parsedMagicDNSZone = zone
+                    hints.magicDNSZone = zone
                 }
             default:
                 break
             }
         }
+
+        configHints = hints
     }
     
     // MARK: - Running Info Callback
@@ -124,16 +124,10 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     }
     
     private func handleRustStop() {
-        let msg = EasyTierCore.getLatestErrorMessage() ?? "Unknown"
+        let msg = EasyTierCore.getLatestErrorMessage() ?? ""
         logger.error("Rust Core 已停止: \(msg)")
-        
-        // Save error to App Group for host app
-        if let defaults = UserDefaults(suiteName: APP_GROUP_ID) {
-            defaults.set(msg, forKey: "TunnelLastError")
-            defaults.synchronize()
-        }
-        
-        DispatchQueue.main.async {
+
+        Task { @MainActor in
             self.cancelTunnelWithError(NSError(
                 domain: "SwiftierNE", code: 2,
                 userInfo: [NSLocalizedDescriptionKey: msg]
@@ -144,27 +138,21 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     // MARK: - Dynamic Network Settings
     
     private func enqueueSettingsUpdate() {
-        DispatchQueue.main.async { [weak self] in
+        debounceTask?.cancel()
+        debounceTask = Task { @MainActor [weak self] in
             guard let self else { return }
-            
-            // Cancel previous pending debounce to batch rapid changes
-            self.debounceWorkItem?.cancel()
-            
-            let workItem = DispatchWorkItem { [weak self] in
-                guard let self else { return }
-                if self.reasserting {
-                    logger.info("设置更新已在进行中，排队等待")
-                    self.needReapplySettings = true
-                    return
-                }
-                self.applyNetworkSettings { error in
-                    if let error {
-                        logger.error("设置更新失败: \(error)")
-                    }
+            try? await Task.sleep(for: .seconds(debounceInterval))
+            guard !Task.isCancelled else { return }
+            if self.reasserting {
+                logger.info("设置更新已在进行中，排队等待")
+                self.needReapplySettings = true
+                return
+            }
+            self.applyNetworkSettings { error in
+                if let error {
+                    logger.error("设置更新失败: \(error)")
                 }
             }
-            self.debounceWorkItem = workItem
-            DispatchQueue.main.asyncAfter(deadline: .now() + debounceInterval, execute: workItem)
         }
     }
     
@@ -180,7 +168,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         let newSnapshot = SettingsSnapshot(from: settings)
         
         let wrappedCompletion: (Error?) -> Void = { error in
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 if error == nil {
                     self.lastAppliedSettings = newSnapshot
                 }
@@ -234,6 +222,12 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
                     }
                 } else {
                     logger.error("无法获取 TUN fd（packetFlow 和 scan 均失败）")
+                    wrappedCompletion(NSError(
+                        domain: "SwiftierNE",
+                        code: 4,
+                        userInfo: [NSLocalizedDescriptionKey: "无法获取 TUN 文件描述符"]
+                    ))
+                    return
                 }
             }
             
@@ -248,10 +242,10 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         let runningInfo = fetchRunningInfo()
 
         let runtimeIPv4 = runningInfo?.myNodeInfo?.virtualIPv4
-        let ipv4Address = runtimeIPv4?.address.description ?? parsedIPv4
+        let ipv4Address = runtimeIPv4?.address.description ?? configHints.ipv4
         let subnetMask = runtimeIPv4
             .flatMap { cidrToSubnetMask($0.networkLength) }
-            ?? parsedSubnet
+            ?? configHints.subnet
 
         if let ipv4Address, let subnetMask {
             let ipv4Settings = NEIPv4Settings(addresses: [ipv4Address], subnetMasks: [subnetMask])
@@ -271,7 +265,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
 
                 if let nodeIp = info.myNodeInfo?.virtualIPv4 {
                     let networkAddr = maskedAddress(nodeIp.address, networkLength: nodeIp.networkLength)
-                    let netMask = cidrToSubnetMask(nodeIp.networkLength) ?? "255.255.255.0"
+                    let netMask = cidrToSubnetMask(nodeIp.networkLength)!
                     routes.append(NEIPv4Route(destinationAddress: networkAddr, subnetMask: netMask))
                 }
             }
@@ -281,7 +275,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
                 routes.append(NEIPv4Route(destinationAddress: networkAddr, subnetMask: subnetMask))
             }
 
-            if parsedMagicDNS,
+            if configHints.magicDNS,
                !routes.contains(where: { ipv4RouteContainsAddress(destination: $0.destinationAddress, subnetMask: $0.destinationSubnetMask, address: magicDNSResolver) }) {
                 routes.append(NEIPv4Route(destinationAddress: magicDNSResolver, subnetMask: "255.255.255.255"))
             }
@@ -291,8 +285,8 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         }
 
         let runtimeIPv6 = runningInfo?.myNodeInfo?.virtualIPv6
-        let ipv6Address = runtimeIPv6?.address.description ?? parsedIPv6
-        let ipv6PrefixLength = runtimeIPv6?.networkLength ?? parsedIPv6Prefix
+        let ipv6Address = runtimeIPv6?.address.description ?? configHints.ipv6
+        let ipv6PrefixLength = runtimeIPv6?.networkLength ?? configHints.ipv6Prefix
 
         if let ipv6Address, let prefixLength = ipv6PrefixLength {
             let ipv6Settings = NEIPv6Settings(
@@ -310,14 +304,14 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             settings.ipv6Settings = ipv6Settings
         }
 
-        if parsedMagicDNS {
+        if configHints.magicDNS {
             let dnsSettings = NEDNSSettings(servers: [magicDNSResolver])
-            dnsSettings.searchDomains = [parsedMagicDNSZone]
-            dnsSettings.matchDomains = [parsedMagicDNSZone]
+            dnsSettings.searchDomains = [configHints.magicDNSZone]
+            dnsSettings.matchDomains = [configHints.magicDNSZone]
             settings.dnsSettings = dnsSettings
         }
 
-        settings.mtu = NSNumber(value: parsedMTU ?? 1380)
+        settings.mtu = NSNumber(value: configHints.mtu ?? 1380)
 
         if settings.ipv4Settings == nil && settings.ipv6Settings == nil {
             logger.warning("无可用 IP 地址，返回空设置")
@@ -344,7 +338,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         
         // 3. 初始化 Logger（从 App Group 读取用户设置的日志等级）
         let savedLevel: LogLevel = {
-            if let defaults = UserDefaults(suiteName: APP_GROUP_ID),
+            if let defaults = appGroupDefaults(),
                let raw = defaults.string(forKey: "logLevel"),
                let level = LogLevel(rawValue: raw.lowercased()) {
                 return level

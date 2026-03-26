@@ -5,6 +5,31 @@ struct CodeEditor: NSViewRepresentable {
     @Binding var text: String
     var mode: Mode = .toml
     var isEditable: Bool = true
+
+    private static let tomlPatterns: [(NSRegularExpression, NSColor, Bool)] = [
+        (try! NSRegularExpression(pattern: "^\\s*\\[.+\\]", options: [.anchorsMatchLines]), .systemOrange, true),
+        (try! NSRegularExpression(pattern: "^\\s*[a-zA-Z0-9_-]+\\s*(?==)", options: [.anchorsMatchLines]), .systemBlue, false),
+        (try! NSRegularExpression(pattern: "#.*$", options: [.anchorsMatchLines]), .secondaryLabelColor, false)
+    ]
+
+    private static let logPatterns: [(NSRegularExpression, NSColor, Bool)] = [
+        (try! NSRegularExpression(pattern: "^\\[[^\\]]+\\]", options: [.anchorsMatchLines]), .secondaryLabelColor, false),
+        (try! NSRegularExpression(pattern: "\\[easytier_core::[^\\]]+\\]", options: []), .secondaryLabelColor, false),
+        (try! NSRegularExpression(pattern: "(?i)ERROR|FATAL", options: []), .systemRed, true),
+        (try! NSRegularExpression(pattern: "(?i)WARN|WARNING", options: []), .systemOrange, true),
+        (try! NSRegularExpression(pattern: "(?i)INFO", options: []), .systemGreen, true),
+        (try! NSRegularExpression(pattern: "(?i)DEBUG", options: []), .systemCyan, true),
+        (try! NSRegularExpression(pattern: "(?i)TRACE", options: []), .systemBlue, true),
+        (try! NSRegularExpression(pattern: "Spotier", options: []), .labelColor, true)
+    ]
+
+    private static let jsonPatterns: [(NSRegularExpression, NSColor, Bool)] = [
+        (try! NSRegularExpression(pattern: "\"[^\"]+\"\\s*:", options: []), .systemBlue, true),
+        (try! NSRegularExpression(pattern: ":\\s*\"[^\"]*\"", options: []), .systemGreen, false),
+        (try! NSRegularExpression(pattern: ":\\s*[0-9]+\\.?[0-9]*", options: []), .systemOrange, false),
+        (try! NSRegularExpression(pattern: "\\b(true|false|null)\\b", options: []), .systemPurple, true),
+        (try! NSRegularExpression(pattern: "[\\[\\]\\{\\}]", options: []), .secondaryLabelColor, false)
+    ]
     
     enum Mode {
         case toml
@@ -17,9 +42,7 @@ struct CodeEditor: NSViewRepresentable {
         let string = storage.string as NSString
         let fullRange = NSRange(location: 0, length: string.length)
         
-        // Helper
-        func applyStyle(pattern: String, color: NSColor, bold: Bool = false) {
-            guard let regex = try? NSRegularExpression(pattern: pattern, options: .anchorsMatchLines) else { return }
+        func applyStyle(_ regex: NSRegularExpression, color: NSColor, bold: Bool = false) {
             regex.enumerateMatches(in: storage.string, options: [], range: fullRange) { match, _, _ in
                 if let range = match?.range {
                     storage.addAttribute(.foregroundColor, value: color, range: range)
@@ -36,72 +59,27 @@ struct CodeEditor: NSViewRepresentable {
             storage.removeAttribute(.font, range: fullRange)
             storage.addAttribute(.foregroundColor, value: NSColor.labelColor, range: fullRange)
             storage.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: 13, weight: .regular), range: fullRange)
-            
-            // [Section]
-            applyStyle(pattern: "^\\s*\\[.+\\]", color: NSColor.systemOrange, bold: true)
-            // Key =
-            applyStyle(pattern: "^\\s*[a-zA-Z0-9_-]+\\s*(?==)", color: NSColor.systemBlue)
-            // # Comment
-            applyStyle(pattern: "#.*$", color: NSColor.secondaryLabelColor)
+            for (regex, color, bold) in Self.tomlPatterns {
+                applyStyle(regex, color: color, bold: bold)
+            }
         } else if mode == .log {
-            // 1. 重置基础样式 (Cleaner Log Style)
             storage.removeAttribute(.foregroundColor, range: fullRange)
             storage.removeAttribute(.font, range: fullRange)
-            
-            // Standard Text Color (Adaptive White/Black) instead of Matrix Green
             storage.addAttribute(.foregroundColor, value: NSColor.textColor, range: fullRange)
-            
-            // Menlo or Monospace Font
             let font = NSFont(name: "Menlo", size: 12) ?? NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
             storage.addAttribute(.font, value: font, range: fullRange)
-            
-            // Time & Meta Styling (Gray)
-            // Matches [2026-01-18 ...] or [Helper]
-            applyStyle(pattern: "^\\[[^\\]]+\\]", color: NSColor.secondaryLabelColor)
-            applyStyle(pattern: "\\[easytier_core::[^\\]]+\\]", color: NSColor.secondaryLabelColor)
-            
-            // Log Level Highlighting
-            // ERROR / FATAL -> Red
-            applyStyle(pattern: "(?i)ERROR|FATAL", color: NSColor.systemRed, bold: true)
-            
-            // WARN -> Yellow
-            applyStyle(pattern: "(?i)WARN|WARNING", color: NSColor.systemOrange, bold: true)
-            
-            // INFO -> Green
-            applyStyle(pattern: "(?i)INFO", color: NSColor.systemGreen, bold: true)
-            
-            // DEBUG -> Cyan
-            applyStyle(pattern: "(?i)DEBUG", color: NSColor.systemCyan, bold: true)
-            
-            // TRACE -> Blue/Gray
-            // Usually verbose, keep it subtle or blue
-            applyStyle(pattern: "(?i)TRACE", color: NSColor.systemBlue, bold: true)
-            
-            // Highlight Swiftier keywords
-            applyStyle(pattern: "Spotier", color: NSColor.labelColor, bold: true)
+            for (regex, color, bold) in Self.logPatterns {
+                applyStyle(regex, color: color, bold: bold)
+            }
         } else if mode == .json {
-            // JSON Syntax Highlighting
             storage.removeAttribute(.foregroundColor, range: fullRange)
             storage.removeAttribute(.font, range: fullRange)
             storage.addAttribute(.foregroundColor, value: NSColor.textColor, range: fullRange)
-            
             let font = NSFont(name: "Menlo", size: 12) ?? NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
             storage.addAttribute(.font, value: font, range: fullRange)
-            
-            // Keys ("key":) - Blue
-            applyStyle(pattern: "\"[^\"]+\"\\s*:", color: NSColor.systemBlue, bold: true)
-            
-            // String values ("value") - Green
-            applyStyle(pattern: ":\\s*\"[^\"]*\"", color: NSColor.systemGreen)
-            
-            // Numbers - Orange
-            applyStyle(pattern: ":\\s*[0-9]+\\.?[0-9]*", color: NSColor.systemOrange)
-            
-            // Boolean and null - Purple
-            applyStyle(pattern: "\\b(true|false|null)\\b", color: NSColor.systemPurple, bold: true)
-            
-            // Brackets and braces - Gray
-            applyStyle(pattern: "[\\[\\]\\{\\}]", color: NSColor.secondaryLabelColor)
+            for (regex, color, bold) in Self.jsonPatterns {
+                applyStyle(regex, color: color, bold: bold)
+            }
         }
     }
 

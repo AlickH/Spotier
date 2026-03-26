@@ -5,19 +5,15 @@ import AppKit
 /// This bypasses SwiftUI's limitations by interacting directly with the AppKit layer.
 struct ScrollFixer: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        // Delay execution slightly to ensure the view hierarchy is built
-        DispatchQueue.main.async {
-            if let scrollView = findScrollView(for: view) {
-                scrollView.verticalScrollElasticity = .none
-                scrollView.hasVerticalScroller = false
-                scrollView.usesPredominantAxisScrolling = false // Forces strict axis locking
-            }
-        }
-        return view
+        NSView()
     }
     
-    func updateNSView(_ nsView: NSView, context: Context) {}
+    func updateNSView(_ nsView: NSView, context: Context) {
+        guard let scrollView = findScrollView(for: nsView) else { return }
+        scrollView.verticalScrollElasticity = .none
+        scrollView.hasVerticalScroller = false
+        scrollView.usesPredominantAxisScrolling = false
+    }
     
     private func findScrollView(for view: NSView) -> NSScrollView? {
         var current: NSView? = view.superview

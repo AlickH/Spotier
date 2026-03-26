@@ -7,12 +7,13 @@
 
 import Foundation
 import Combine
-import AppKit
 import SwiftUI
 import NetworkExtension
 
+@MainActor
 final class SpotierRunner: ObservableObject {
     static let shared = SpotierRunner()
+    private let configRepository: ConfigFileAccessing = ConfigFileRepository.shared
 
     @Published var isRunning = false
     @Published var peers: [PeerInfo] = []
@@ -24,25 +25,21 @@ final class SpotierRunner: ObservableObject {
     @Published var uptimeText: String = "00:00:00"
     
     // 公开最后一次数据更新的时间戳，供 UI 层做动画相位对齐
-    @Published private(set) var lastDataTime: Date = Date.distantPast
+    @Published private(set) var lastDataTime: Date?
     
     private var startedAt: Date?
-    private var timer: AnyCancellable?
     @Published private(set) var sessionID = UUID()
     private var currentSessionID = UUID()
-    private var lastConfigPath: String?
     
     // Speed calculation
     private var lastTotalRx: Int = 0
     private var lastTotalTx: Int = 0
     private var lastPollTime: Date?
-    private var lastProcessingTime: Date = .distantPast // 用于频率限制
+    private var lastProcessingTime: Date?
     
-    // Peer-level speed tracking
-    private var lastPeerStats: [Int: (rx: Int, tx: Int, time: Date)] = [:]
     private let jsonDecoder = JSONDecoder()
     
-    @Published var virtualIP: String = "-"
+    @Published var virtualIP: String = ""
     
     // Speed history for graphs
     @Published var downloadHistory: [Double] = Array(repeating: 0.0, count: 20)
@@ -50,7 +47,6 @@ final class SpotierRunner: ObservableObject {
     
     // Subscriber & Polling Control
     private var subscriberCount = 0
-    private var isAppActive = true
     private var pollingTimer: AnyCancellable?
     private let activeInterval: TimeInterval = 1.0
     private let lowPowerInterval: TimeInterval = 5.0
@@ -60,29 +56,15 @@ final class SpotierRunner: ObservableObject {
     private var statusObserver: AnyCancellable?
 
     private init() {
-        // App Lifecycle Monitoring
-        NotificationCenter.default.addObserver(self, selector: #selector(handleAppDidBecomeActive), name: NSApplication.didBecomeActiveNotification, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(handleAppWillResignActive), name: NSApplication.willResignActiveNotification, object: nil)
-        
         // Listen to VPNManager status changes
         statusObserver = VPNManager.shared.$status.sink { [weak self] status in
-            self?.handleVPNStatusChange(status)
+            Task { @MainActor [weak self] in
+                self?.handleVPNStatusChange(status)
+            }
         }
         
         // Check initial state
         syncWithVPNState()
-    }
-    
-    @objc private func handleAppDidBecomeActive() {
-        // print("[Runner] App Active -> High Perf Mode")
-        isAppActive = true
-        updatePollingMode()
-    }
-    
-    @objc private func handleAppWillResignActive() {
-        // print("[Runner] App Background -> Low Power Mode")
-        isAppActive = false
-        updatePollingMode()
     }
     
     func addSubscriber() {
@@ -117,35 +99,21 @@ final class SpotierRunner: ObservableObject {
     }
     
     private func handleVPNStatusChange(_ status: NEVPNStatus) {
-        DispatchQueue.main.async {
-            switch status {
-            case .connected:
-                if !self.isRunning {
-                    self.isRunning = true
-                    // 使用 NE 的实际连接时间，而非 App 启动时间
-                    self.startedAt = VPNManager.shared.connectedDate ?? Date()
-                    self.startUptimeTimer()
-                    self.startMonitoring()
-                }
-                self.isProcessing = false
-            case .disconnected, .invalid:
-                if self.isRunning {
-                    self.isRunning = false
-                    self.stopUptimeTimer()
-                    self.peers = []
-                    self.uptimeText = "00:00:00"
-                    self.downloadSpeed = "0 KB/s"
-                    self.uploadSpeed = "0 KB/s"
-                    self.virtualIP = "-"
-                    self.downloadHistory = Array(repeating: 0.0, count: 20)
-                    self.uploadHistory = Array(repeating: 0.0, count: 20)
-                }
-                self.isProcessing = false
-            case .connecting, .disconnecting, .reasserting:
-                self.isProcessing = true
-            @unknown default:
-                break
+        switch status {
+        case .connected:
+            if !isRunning {
+                beginSession(connectedDate: VPNManager.shared.connectedDate ?? Date())
             }
+            isProcessing = false
+        case .disconnected, .invalid:
+            if isRunning {
+                endSession()
+            }
+            isProcessing = false
+        case .connecting, .disconnecting, .reasserting:
+            isProcessing = true
+        @unknown default:
+            break
         }
     }
 
@@ -166,67 +134,21 @@ final class SpotierRunner: ObservableObject {
         } else {
             // Start
             // 手动启动时恢复 On Demand（之前手动关闭时会禁用）
-            let connectOnStart = (UserDefaults.standard.object(forKey: "connectOnStart") as? Bool) ?? true
-            if connectOnStart {
+            if UserDefaults.standard.bool(forKey: "connectOnStart") {
                 VPNManager.shared.updateOnDemand(enabled: true)
             }
             
             // 使用 ConfigManager 读取（处理安全域）
             do {
                 let configURL = URL(fileURLWithPath: configPath)
-                let configContent = try ConfigManager.shared.readConfigContent(configURL)
+                let configContent = try configRepository.readContent(at: configURL)
                 VPNManager.shared.startVPN(configContent: configContent)
-                
-                // 缓存路径用于重启
-                self.lastConfigPath = configPath
             } catch {
                 print("Failed to read config for VPN: \(error)")
-                let alert = NSAlert()
-                alert.messageText = "配置读取失败"
-                alert.informativeText = "无法读取配置文件：\(error.localizedDescription)"
-                // alert.runModal() // 不要在 toggle 中阻塞 UI，尤其是自动连接时
-                // 而是发送通知或者只是 log?
-                // 如果是手动点击，modal 是可以的。如果是自动启动...
-                // 暂时保留，但在主线程操作
-                DispatchQueue.main.async {
-                    if self.isWindowVisible {
-                        alert.runModal()
-                    }
-                }
             }
         }
     }
     
-    func restartService() {
-        guard isRunning else { return }
-        VPNManager.shared.stopVPN()
-        
-        // 监听 VPN 断开后再重连，而非使用固定延迟
-        guard let path = lastConfigPath else { return }
-        var restartObserver: AnyCancellable?
-        restartObserver = VPNManager.shared.$status
-            .filter { $0 == .disconnected }
-            .first()
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                self?.toggleService(configPath: path)
-                restartObserver?.cancel()
-            }
-    }
-
-    func openLogFile() {
-        // Logs for NE are different. They might be in the Console.app or a shared file.
-        // If we implement file logging in PacketTunnelProvider to a shared container:
-        if let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.alick.spotier") {
-            let logURL = containerURL.appendingPathComponent("easytier.log")
-            if FileManager.default.fileExists(atPath: logURL.path) {
-                NSWorkspace.shared.open(logURL)
-            } else {
-                print("Log file not found at \(logURL.path)")
-            }
-        }
-    }
-
     private func startMonitoring() {
         resetSpeedCounters()
         updatePollingMode()
@@ -237,7 +159,8 @@ final class SpotierRunner: ObservableObject {
         lastTotalRx = 0
         lastTotalTx = 0
         lastPollTime = nil
-        lastPeerStats = [:]
+        lastProcessingTime = nil
+        lastDataTime = nil
         downloadHistory = Array(repeating: 0.0, count: 20)
         uploadHistory = Array(repeating: 0.0, count: 20)
     }
@@ -248,7 +171,9 @@ final class SpotierRunner: ObservableObject {
         // Request running info directly from NE via IPC
         VPNManager.shared.requestRunningInfo { [weak self] json in
             guard let self = self, let json = json else { return }
-            self.processRunningInfo(json)
+            Task { @MainActor in
+                self.processRunningInfo(json)
+            }
         }
     }
     
@@ -256,150 +181,166 @@ final class SpotierRunner: ObservableObject {
     // Copying the rest of the logic to ensure it works.
 
     private var throttleInterval: TimeInterval = 0.8
-    
-    func setWarmUpMode(_ enabled: Bool) {
-        self.throttleInterval = enabled ? 0.05 : 0.8
-    }
-    
-    func forceRefresh() {
-        refreshPeersOnce()
-    }
 
     private func processRunningInfo(_ jsonStr: String) {
         let now = Date()
-        guard now.timeIntervalSince(lastProcessingTime) >= throttleInterval else {
+        if let lastProcessingTime, now.timeIntervalSince(lastProcessingTime) < throttleInterval {
             return
         }
-        
-        lastProcessingTime = now
         guard let data = jsonStr.data(using: .utf8) else { return }
-        
+        let status: SpotierStatus
+        do {
+            status = try jsonDecoder.decode(SpotierStatus.self, from: data)
+        } catch {
+            return
+        }
+
+        lastProcessingTime = now
+        LogParser.shared.updateEventsFromRunningInfo(status.events)
+
         var totalRx = 0
         var totalTx = 0
         var fetchedPeers: [PeerInfo] = []
-        
-            guard let status = try? jsonDecoder.decode(SpotierStatus.self, from: data) else { return }
-            
-            // 1. IP & Events
-            LogParser.shared.updateEventsFromRunningInfo(status.events)
-            if let myIp = status.myNodeInfo?.virtualIPv4?.description, self.virtualIP != myIp {
-                DispatchQueue.main.async { self.virtualIP = myIp }
-            }
-            
-            // 2. Stats
-            for pair in status.peerRoutePairs {
-                if let peer = pair.peer {
-                    for conn in peer.conns {
-                        if let stats = conn.stats {
-                            totalRx += stats.rxBytes
-                            totalTx += stats.txBytes
-                        }
-                    }
-                }
-            }
-            
-            // 3. Local Node
-            if let myNode = status.myNodeInfo {
-                fetchedPeers.append(PeerInfo(
-                    sessionID: self.currentSessionID,
-                    ipv4: myNode.virtualIPv4?.description ?? "-",
-                    hostname: myNode.hostname,
-                    cost: "本机",
-                    latency: "0",
-                    loss: "0.0%",
-                    rx: self.formatBytes(totalRx),
-                    tx: self.formatBytes(totalTx),
-                    tunnel: "LOCAL",
-                    nat: myNode.stunInfo?.udpNATType.description ?? "Unknown",
-                    version: myNode.version,
-                    myNodeData: myNode
-                ))
-            }
-            
-            // 4. Remote Nodes
-            for pair in status.peerRoutePairs {
-                var rxVal = "0 B", txVal = "0 B", latencyVal = "", lossVal = "", tunnelVal = ""
-                
-                if let peer = pair.peer {
-                    var cRx = 0, cTx = 0, latSum = 0, latCount = 0, lossSum = 0.0, lossCount = 0, tunnels = Set<String>()
-                    for conn in peer.conns {
-                        if let s = conn.stats { 
-                            latSum += s.latencyUs; latCount += 1
-                            cRx += s.rxBytes; cTx += s.txBytes 
-                        }
-                        
-                        lossSum += conn.lossRate
-                        lossCount += 1
-                        
-                        if let t = conn.tunnel?.tunnelType { tunnels.insert(t.uppercased()) }
-                    }
-                    rxVal = formatBytes(cRx); txVal = formatBytes(cTx)
-                    if latCount > 0 { latencyVal = String(format: "%.1f", Double(latSum)/Double(latCount)/1000.0) }
-                    if lossCount > 0 { lossVal = String(format: "%.1f%%", (lossSum/Double(lossCount))*100.0) }
-                    tunnelVal = tunnels.sorted().joined(separator: "&")
-                } else if let pathLat = pair.route.pathLatency as Int?, pathLat > 0 {
-                     latencyVal = String(format: "%.1f", Double(pathLat) / 1000.0)
-                }
-                
-                fetchedPeers.append(PeerInfo(
-                    sessionID: self.currentSessionID,
-                    ipv4: pair.route.ipv4Addr?.description ?? "",
-                    hostname: pair.route.hostname,
-                    cost: pair.route.cost == 1 ? "P2P" : "Relay(\(pair.route.cost))",
-                    latency: latencyVal, loss: lossVal, rx: rxVal, tx: txVal, tunnel: tunnelVal,
-                    nat: pair.route.stunInfo?.udpNATType.description ?? "Unknown",
-                    version: pair.route.version,
-                    fullData: pair
-                ))
-        }
-        
-        // Traffic update
-        if let lastT = lastPollTime {
-            let d = now.timeIntervalSince(lastT)
-            if d > 0.1 {
-                let rSpeed = max(0, Double(totalRx - lastTotalRx) / d)
-                let tSpeed = max(0, Double(totalTx - lastTotalTx) / d)
-                DispatchQueue.main.async {
-                    self.downloadSpeed = self.formatSpeed(rSpeed)
-                    self.uploadSpeed = self.formatSpeed(tSpeed)
-                    self.downloadHistory.removeFirst(); self.downloadHistory.append(rSpeed)
-                    self.uploadHistory.removeFirst(); self.uploadHistory.append(tSpeed)
-                    
-                    self.maxHistorySpeed = max(
-                        (self.downloadHistory.max() ?? 0.0),
-                        (self.uploadHistory.max() ?? 0.0),
-                        1_048_576.0
-                    )
-                }
+
+        for pair in status.peerRoutePairs {
+            guard let peer = pair.peer else { continue }
+            for conn in peer.conns {
+                guard let stats = conn.stats else { continue }
+                totalRx += stats.rxBytes
+                totalTx += stats.txBytes
             }
         }
+
+        if let myNode = status.myNodeInfo {
+            fetchedPeers.append(PeerInfo(
+                sessionID: currentSessionID,
+                ipv4: myNode.virtualIPv4?.description ?? "",
+                hostname: myNode.hostname,
+                cost: "本机",
+                latency: "0",
+                loss: "0.0%",
+                rx: formatBytes(totalRx),
+                tx: formatBytes(totalTx),
+                tunnel: "LOCAL",
+                nat: myNode.stunInfo?.udpNATType.description ?? "",
+                version: myNode.version,
+                myNodeData: myNode
+            ))
+        }
+
+        for pair in status.peerRoutePairs {
+            var rxText = "0 B"
+            var txText = "0 B"
+            var latencyText = ""
+            var lossText = ""
+            var tunnelText = ""
+
+            if let peer = pair.peer {
+                var rxBytes = 0
+                var txBytes = 0
+                var latencySum = 0
+                var latencyCount = 0
+                var lossSum = 0.0
+                var lossCount = 0
+                var tunnels = Set<String>()
+
+                for conn in peer.conns {
+                    if let stats = conn.stats {
+                        latencySum += stats.latencyUs
+                        latencyCount += 1
+                        rxBytes += stats.rxBytes
+                        txBytes += stats.txBytes
+                    }
+
+                    lossSum += conn.lossRate
+                    lossCount += 1
+
+                    if let tunnelType = conn.tunnel?.tunnelType {
+                        tunnels.insert(tunnelType.uppercased())
+                    }
+                }
+
+                rxText = formatBytes(rxBytes)
+                txText = formatBytes(txBytes)
+                if latencyCount > 0 {
+                    latencyText = String(format: "%.1f", Double(latencySum) / Double(latencyCount) / 1000.0)
+                }
+                if lossCount > 0 {
+                    lossText = String(format: "%.1f%%", (lossSum / Double(lossCount)) * 100.0)
+                }
+                tunnelText = tunnels.sorted().joined(separator: "&")
+            } else if pair.route.pathLatency > 0 {
+                latencyText = String(format: "%.1f", Double(pair.route.pathLatency) / 1000.0)
+            }
+
+            fetchedPeers.append(PeerInfo(
+                sessionID: currentSessionID,
+                ipv4: pair.route.ipv4Addr?.description ?? "",
+                hostname: pair.route.hostname,
+                cost: pair.route.cost == 1 ? "P2P" : "Relay(\(pair.route.cost))",
+                latency: latencyText,
+                loss: lossText,
+                rx: rxText,
+                tx: txText,
+                tunnel: tunnelText,
+                nat: pair.route.stunInfo?.udpNATType.description ?? "",
+                version: pair.route.version,
+                fullData: pair
+            ))
+        }
+
+        let sortedPeers = fetchedPeers.sorted { p1, p2 in
+            let is1Local = p1.cost == "本机"
+            let is2Local = p2.cost == "本机"
+            if is1Local != is2Local { return is1Local }
+
+            let is1Empty = p1.ipv4.isEmpty
+            let is2Empty = p2.ipv4.isEmpty
+            if is1Empty != is2Empty { return !is1Empty }
+
+            return p1.ipv4.localizedStandardCompare(p2.ipv4) == .orderedAscending
+        }
+
+        let receiveSpeed: Double
+        let transmitSpeed: Double
+        if let lastPollTime, now.timeIntervalSince(lastPollTime) > 0.1 {
+            let elapsed = now.timeIntervalSince(lastPollTime)
+            receiveSpeed = max(0, Double(totalRx - lastTotalRx) / elapsed)
+            transmitSpeed = max(0, Double(totalTx - lastTotalTx) / elapsed)
+        } else {
+            receiveSpeed = 0
+            transmitSpeed = 0
+        }
+
         self.lastTotalRx = totalRx
         self.lastTotalTx = totalTx
         self.lastPollTime = now
-        
-        DispatchQueue.main.async {
-            self.lastDataTime = now
-            
-            let sorted = fetchedPeers.sorted { p1, p2 in
-                let is1L = p1.cost == "本机"; let is2L = p2.cost == "本机"
-                if is1L != is2L { return is1L }
-                let is1Empty = p1.ipv4.isEmpty; let is2Empty = p2.ipv4.isEmpty
-                if is1Empty != is2Empty { return !is1Empty }
-                return p1.ipv4.localizedStandardCompare(p2.ipv4) == .orderedAscending
+
+        lastDataTime = now
+        virtualIP = status.myNodeInfo?.virtualIPv4?.description ?? ""
+        downloadSpeed = formatSpeed(receiveSpeed)
+        uploadSpeed = formatSpeed(transmitSpeed)
+        downloadHistory.removeFirst()
+        downloadHistory.append(receiveSpeed)
+        uploadHistory.removeFirst()
+        uploadHistory.append(transmitSpeed)
+        maxHistorySpeed = max(
+            downloadHistory.max() ?? 0.0,
+            uploadHistory.max() ?? 0.0,
+            1_048_576.0
+        )
+
+        let oldIDs = peers.map(\.id)
+        let newIDs = sortedPeers.map(\.id)
+
+        if oldIDs != newIDs {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) {
+                peers = sortedPeers
             }
-            
-            let oldIDs = self.peers.map(\.id)
-            let newIDs = sorted.map(\.id)
-            
-            if oldIDs != newIDs {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) {
-                    self.peers = sorted
-                }
-            } else {
-                self.peers = sorted
-            }
-            self.peerCount = "\(sorted.count)"
+        } else {
+            peers = sortedPeers
         }
+        peerCount = "\(sortedPeers.count)"
     }
     
     private func formatSpeed(_ bytesPerSec: Double) -> String {
@@ -420,12 +361,39 @@ final class SpotierRunner: ObservableObject {
     }
 
     private var uptimeTimer: Timer?
-    
+
+    private func beginSession(connectedDate: Date) {
+        guard !isRunning else { return }
+
+        let nextSessionID = UUID()
+        isRunning = true
+        startedAt = connectedDate
+        currentSessionID = nextSessionID
+        sessionID = nextSessionID
+        startUptimeTimer()
+        startMonitoring()
+    }
+
+    private func endSession() {
+        isRunning = false
+        startedAt = nil
+        stopUptimeTimer()
+        peers = []
+        peerCount = "0"
+        uptimeText = "00:00:00"
+        downloadSpeed = "0 KB/s"
+        uploadSpeed = "0 KB/s"
+        virtualIP = ""
+        resetSpeedCounters()
+    }
+
     private func startUptimeTimer() {
         guard uptimeTimer == nil else { return }
         updateUptimeText()
         let t = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.updateUptimeText()
+            Task { @MainActor [weak self] in
+                self?.updateUptimeText()
+            }
         }
         RunLoop.main.add(t, forMode: .common)
         uptimeTimer = t

@@ -23,6 +23,7 @@ struct LogEntry: Identifiable, Equatable {
 extension LogLevel {
     var color: Color {
         switch self {
+        case .off: return .gray
         case .error: return .red
         case .warn: return .orange
         case .info: return .green
@@ -34,14 +35,16 @@ extension LogLevel {
 
 struct EventEntry: Identifiable, Equatable, Codable {
     let id: UUID
+    let name: String
     let timestamp: String
     let date: Date?
     let type: EventType
     let details: String
     let highlights: [HighlightRange]?
     
-    init(id: UUID = UUID(), timestamp: String, date: Date?, type: EventType, details: String, highlights: [HighlightRange]? = nil) {
+    init(id: UUID = UUID(), name: String, timestamp: String, date: Date?, type: EventType, details: String, highlights: [HighlightRange]? = nil) {
         self.id = id
+        self.name = name
         self.timestamp = timestamp
         self.date = date
         self.type = type
@@ -60,7 +63,7 @@ struct EventEntry: Identifiable, Equatable, Codable {
         case tunDeviceReady = "TunDeviceReady"
         case listenerAdded = "ListenerAdded"
         case handshake = "Handshake"
-        case unknown = "Event"
+        case unknown = ""
         
         var color: Color {
             switch self {

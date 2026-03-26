@@ -6,7 +6,7 @@ import os
 
 func tunnelFileDescriptor() -> Int32? {
     let CTLIOCGINFO_VALUE: UInt = 0xc0644e03
-    logger.warning("tunnelFileDescriptor() use fallback")
+    logger.info("tunnelFileDescriptor() scan existing descriptors")
     var ctlInfo = ctl_info()
     withUnsafeMutablePointer(to: &ctlInfo.ctl_name) {
         $0.withMemoryRebound(to: CChar.self, capacity: MemoryLayout.size(ofValue: $0.pointee)) {
@@ -41,7 +41,7 @@ func tunnelFileDescriptor() -> Int32? {
 }
 
 func initRustLogger(level: LogLevel) {
-    guard let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: APP_GROUP_ID) else {
+    guard let containerURL = appGroupContainerURL() else {
         logger.error("initRustLogger() failed: App Group container not found")
         return
     }
@@ -58,13 +58,12 @@ func initRustLogger(level: LogLevel) {
     }
     if ret != 0 {
         let err = extractRustString(errPtr)
-        logger.error("initRustLogger() failed to init: \(err ?? "Unknown", privacy: .public)")
+        logger.error("initRustLogger() failed to init: \(err ?? "", privacy: .public)")
     }
 }
 
 func extractRustString(_ strPtr: UnsafePointer<CChar>?) -> String? {
     guard let strPtr else {
-        logger.error("extractRustString(): nullptr")
         return nil
     }
     let str = String(cString: strPtr)

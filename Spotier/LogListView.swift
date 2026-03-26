@@ -39,21 +39,27 @@ struct LogListView: View {
                         let displayLogs = Array(filteredLogs.reversed())
                         ForEach(displayLogs) { log in
                             let index = displayLogs.firstIndex(where: { $0.id == log.id }) ?? 0
-                            LogListRow(log: log, timestampFormatted: formatTimestamp(log.timestamp), isSelected: selectedLog?.id == log.id)
-                                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
-                                .listRowSeparator(.hidden)
-                                .listRowBackground(
-                                    (selectedLog?.id == log.id) 
-                                    ? Color.blue.opacity(0.15) 
-                                    : (index % 2 == 0 ? Color(nsColor: .textBackgroundColor) : Color.primary.opacity(0.04)) 
-                                )
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                        selectedLog = (selectedLog?.id == log.id) ? nil : log
-                                    }
+                            Button {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    selectedLog = (selectedLog?.id == log.id) ? nil : log
                                 }
-                                .id(log.id)
+                            } label: {
+                                LogListRow(
+                                    log: log,
+                                    timestampFormatted: formatTimestamp(log.timestamp),
+                                    isSelected: selectedLog?.id == log.id
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(
+                                (selectedLog?.id == log.id)
+                                ? Color.blue.opacity(0.15)
+                                : (index % 2 == 0 ? Color(nsColor: .textBackgroundColor) : Color.primary.opacity(0.04))
+                            )
+                            .contentShape(Rectangle())
+                            .id(log.id)
                         }
                     }
                     .listStyle(.plain)
@@ -61,16 +67,11 @@ struct LogListView: View {
                     .background(Color(nsColor: .textBackgroundColor))
                     
                     if logs.count > 5 {
-                        Button {
+                        FloatingScrollTopButton(action: {
                             if let topLog = logs.last {
                                 withAnimation(.easeInOut(duration: 0.3)) { proxy.scrollTo(topLog.id, anchor: .top) }
                             }
-                        } label: {
-                            Image(systemName: "arrow.up")
-                                .font(.system(size: 16, weight: .bold))
-                                .modifier(FlatCircleButtonModifier())
-                        }
-                        .buttonStyle(.plain)
+                        }, size: 16)
                         .padding(12)
                         .transition(.scale.combined(with: .opacity))
                     }
@@ -112,7 +113,7 @@ struct LogListRow: View {
             
             // Bottom Meta Row: Timestamp | Level
             HStack(spacing: 6) {
-                Text(timestampFormatted.isEmpty ? "---- -- -- --:--:--" : timestampFormatted)
+                Text(timestampFormatted)
                     .font(.system(size: 9, design: .monospaced))
                     .foregroundColor(.secondary)
                 

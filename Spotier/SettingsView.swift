@@ -8,15 +8,10 @@ struct SettingsView: View {
     @AppStorage("breathEffect") private var breathEffect: Bool = true
     @AppStorage("launchAtLogin") private var launchAtLogin: Bool = false
 
-    @AppStorage("logLevel", store: UserDefaults(suiteName: "group.com.alick.swiftier")) private var logLevel: String = "INFO"
-    
-    
-    
+    @State private var logLevel = StoredLogLevel.info
     @State private var showLicense = false
     
-
-    
-    private let logLevels = ["OFF", "ERROR", "WARN", "INFO", "DEBUG", "TRACE"]
+    private let logSettingsStore = LogSettingsStore.shared
     
     var body: some View {
         ZStack {
@@ -37,7 +32,7 @@ struct SettingsView: View {
                     HStack {
                         Text("版本")
                         Spacer()
-                        Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown")
+                        Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as! String)
                             .foregroundColor(.secondary)
                     }
                     
@@ -59,8 +54,8 @@ struct SettingsView: View {
                 
                 Section(header: Text("日志"), footer: Text("修改日志等级后，需要停止并重新启动服务才能生效。")) {
                     Picker(LocalizedStringKey("日志等级"), selection: $logLevel) {
-                        ForEach(logLevels, id: \.self) { level in
-                            Text(level).tag(level)
+                        ForEach(StoredLogLevel.allCases, id: \.self) { level in
+                            Text(level.rawValue).tag(level)
                         }
                     }
                 }
@@ -131,6 +126,10 @@ struct SettingsView: View {
         }
         .onAppear {
             checkLaunchAtLogin()
+            logLevel = logSettingsStore.readLevel()
+        }
+        .onChange(of: logLevel) { newValue in
+            logSettingsStore.writeLevel(newValue)
         }
     }
     

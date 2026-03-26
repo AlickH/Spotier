@@ -3,57 +3,69 @@ import Combine
 import SwiftUI
 import AppKit
 
+enum ConfigAccessError: LocalizedError {
+    case missingDirectory
+    case fileAlreadyExists(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .missingDirectory:
+            return "请先选择配置目录"
+        case let .fileAlreadyExists(name):
+            return "文件已存在: \(name)"
+        }
+    }
+}
+
 class ConfigManager: ObservableObject {
     static let shared = ConfigManager()
     
     @Published var configFiles: [URL] = []
     @AppStorage("custom_config_path") var customPathString: String = ""
     @AppStorage("custom_config_bookmark") var customPathBookmark: Data?
-    @AppStorage("cloudkit_sync_enabled") var cloudKitSyncEnabled: Bool = false
-    private var isCloudSyncInProgress = false
+    @AppStorage("icloud_drive_enabled") var iCloudDriveEnabled: Bool = false
+    private let directoryAccess = ConfigDirectoryAccess()
+    private var localDirectory: URL? {
+        directoryAccess.defaultLocalDirectory()
+    }
+    private var iCloudDriveDirectory: URL? {
+        directoryAccess.iCloudDriveDirectory()
+    }
+    private var legacyICloudDriveDirectory: URL? {
+        directoryAccess.legacyICloudDriveDirectory()
+    }
 
     var currentDirectory: URL? {
-        // 开启 CloudKit 后，强制只使用默认目录作为同步源
-        if cloudKitSyncEnabled {
-            return defaultLocalDirectory()
-        }
-
-        return directoryFromUserPreference()
+        iCloudDriveEnabled ? iCloudDriveDirectory : directoryFromUserPreference()
     }
 
     private init() {
-        // 修正：如果 customPathString 已指向 iCloud 容器，清除可能残留的旧书签
-        // （旧书签可能指向桌面等非 iCloud 路径，导致 currentDirectory 返回错误位置）
-        if let bookmark = customPathBookmark, !customPathString.isEmpty {
-            var isStale = false
-            if let bookmarkURL = try? URL(resolvingBookmarkData: bookmark, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &isStale) {
-                let bookmarkPath = bookmarkURL.path
-                // 书签路径与当前设置路径不一致，说明书签是残留的旧数据
-                if bookmarkPath != customPathString {
-                    print("[ConfigManager] 清除残留书签: \(bookmarkPath) != \(customPathString)")
-                    self.customPathBookmark = nil
-                }
-            }
-        }
-        
-        // 首次运行或未设置路径时，使用本地 Application Support 默认目录
-        if customPathString.isEmpty {
-            if let targetDir = defaultLocalDirectory() {
-                self.customPathString = targetDir.path
-            }
+        migrateLegacyICloudDriveDirectoryIfNeeded()
+
+        let bookmarkPath = resolvedBookmarkPathForInitialization()
+        var resolvedPath = customPathString
+        var resolvedBookmark = customPathBookmark
+
+        if let bookmarkPath, !resolvedPath.isEmpty, bookmarkPath != resolvedPath {
+            resolvedBookmark = nil
+            print("[ConfigManager] 清除残留书签: \(bookmarkPath) != \(customPathString)")
         }
 
-        // 开启 CloudKit 后，强制回到默认目录
-        if cloudKitSyncEnabled, let targetDir = defaultLocalDirectory() {
-            self.customPathBookmark = nil
-            self.customPathString = targetDir.path
+        if iCloudDriveEnabled, let iCloudDriveDirectory {
+            resolvedPath = iCloudDriveDirectory.path
+            resolvedBookmark = nil
+        } else if resolvedPath.isEmpty, let localDirectory {
+            resolvedPath = localDirectory.path
         }
+
+        customPathString = resolvedPath
+        customPathBookmark = resolvedBookmark
         refreshConfigs()
     }
 
     func selectCustomFolder() {
-        if cloudKitSyncEnabled {
-            print("CloudKit 同步已启用，已锁定默认目录。")
+        if iCloudDriveEnabled {
+            print("iCloud Drive 存储已启用，已锁定配置目录。")
             return
         }
 
@@ -61,18 +73,22 @@ class ConfigManager: ObservableObject {
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
-        if panel.runModal() == .OK {
-            if let url = panel.url {
-                self.customPathString = url.path
-                
-                // 沙盒适配：保存安全域书签 (Security Scoped Bookmark)
-                if let bookmark = try? url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil) {
-                    self.customPathBookmark = bookmark
-                }
-                
-                self.refreshConfigs()
-            }
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        customPathString = url.path
+
+        do {
+            customPathBookmark = try url.bookmarkData(
+                options: .withSecurityScope,
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            )
+        } catch {
+            customPathBookmark = nil
+            print("创建目录书签失败: \(error)")
         }
+
+        refreshConfigs()
     }
 
     func openiCloudFolder() {
@@ -81,158 +97,95 @@ class ConfigManager: ObservableObject {
         NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: url.path)
     }
 
-    func editConfigFile(url: URL) {
-        NSWorkspace.shared.open(url)
-    }
-
     private var isICloudEnabled: Bool {
         FileManager.default.ubiquityIdentityToken != nil
     }
 
-    func migrateToiCloud() {
-        guard !cloudKitSyncEnabled else { return }
+    func enableICloudDrive() {
+        guard !iCloudDriveEnabled else { return }
 
         guard isICloudEnabled else {
-            print("未检测到 iCloud 账户，无法启用 CloudKit 同步。")
+            print("未检测到 iCloud 账户，无法启用 iCloud Drive。")
             return
         }
 
-        enableCloudKitSync()
+        enableICloudDriveStorage()
     }
 
-    func disableCloudKitSync() {
-        guard cloudKitSyncEnabled else { return }
+    func disableICloudDrive() {
+        guard iCloudDriveEnabled else { return }
 
-        cloudKitSyncEnabled = false
-        isCloudSyncInProgress = false
+        iCloudDriveEnabled = false
 
-        if customPathString.isEmpty, let targetDir = defaultLocalDirectory() {
+        if customPathString.isEmpty, let targetDir = localDirectory {
             customPathString = targetDir.path
         }
 
-        _ = refreshConfigs(skipCloudSync: true)
+        _ = refreshConfigs()
     }
 
     @discardableResult
     func refreshConfigs() -> [URL] {
-        refreshConfigs(skipCloudSync: false)
-    }
-
-    @discardableResult
-    private func refreshConfigs(skipCloudSync: Bool) -> [URL] {
-        guard let url = currentDirectory else {
-            DispatchQueue.main.async { self.configFiles = [] }
+        guard let directory = currentDirectory else {
+            configFiles = []
             return []
         }
-        
-        // 关键修复：必须在访问前请求权限
-        let isScoped = url.startAccessingSecurityScopedResource()
-        defer { if isScoped { url.stopAccessingSecurityScopedResource() } }
-        
+
         do {
-            // 再次确保目录存在（防止被外部删除）
-            if !FileManager.default.fileExists(atPath: url.path) {
-                try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-            }
-            
-            let items = try FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: nil)
-            let tomlFiles = items.filter { $0.pathExtension == "toml" }.sorted(by: { $0.lastPathComponent < $1.lastPathComponent })
-            
-            DispatchQueue.main.async {
-                self.configFiles = tomlFiles
+            let tomlFiles = try directoryAccess.withScopedAccess(to: directory) { directoryURL in
+                if !FileManager.default.fileExists(atPath: directoryURL.path) {
+                    try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+                }
+
+                return try FileManager.default
+                    .contentsOfDirectory(at: directoryURL, includingPropertiesForKeys: nil)
+                    .filter { $0.pathExtension == "toml" }
+                    .sorted(by: { $0.lastPathComponent < $1.lastPathComponent })
             }
 
-            if !skipCloudSync {
-                triggerCloudSyncIfNeeded(force: false)
-            }
-
+            configFiles = tomlFiles
             return tomlFiles
         } catch {
-            print("读取配置文件列表失败: \(error) 路径: \(url.path)")
-            // 如果读取失败，尝试清空列表
-            DispatchQueue.main.async {
-                self.configFiles = []
-            }
+            print("读取配置文件列表失败: \(error) 路径: \(directory.path)")
+            configFiles = []
             return []
         }
     }
 
     func readConfigContent(_ fileURL: URL) throws -> String {
-        // 如果有书签，说明是用户选定的安全域目录
-        if let _ = customPathBookmark, let dirURL = currentDirectory {
-            let isScoped = dirURL.startAccessingSecurityScopedResource()
-            defer { if isScoped { dirURL.stopAccessingSecurityScopedResource() } }
-            
+        try directoryAccess.withScopedAccess(to: currentDirectory) { _ in
             return try String(contentsOf: fileURL, encoding: .utf8)
         }
-        
-        // 普通路径直接读取
-        return try String(contentsOf: fileURL, encoding: .utf8)
+    }
+
+    func createConfig(named filename: String, content: String) throws -> URL {
+        try directoryAccess.withScopedAccess(to: currentDirectory) { directoryURL in
+            let fileURL = directoryURL.appendingPathComponent(filename)
+            guard !FileManager.default.fileExists(atPath: fileURL.path) else {
+                throw ConfigAccessError.fileAlreadyExists(filename)
+            }
+
+            try content.write(to: fileURL, atomically: true, encoding: .utf8)
+            return fileURL
+        }
+    }
+
+    func updateConfig(_ fileURL: URL, content: String) throws {
+        try directoryAccess.withScopedAccess(to: currentDirectory) { _ in
+            try content.write(to: fileURL, atomically: true, encoding: .utf8)
+        }
     }
 
     func deleteConfig(_ fileURL: URL) {
         do {
-            try FileManager.default.removeItem(at: fileURL)
+            try directoryAccess.withScopedAccess(to: currentDirectory) { _ in
+                try FileManager.default.removeItem(at: fileURL)
+            }
         } catch {
             print("删除配置失败: \(error)")
         }
 
-        if cloudKitSyncEnabled && isICloudEnabled {
-            let fileName = fileURL.lastPathComponent
-            Task.detached {
-                do {
-                    try await CloudKitConfigSync.shared.deleteConfig(named: fileName)
-                } catch {
-                    print("CloudKit 删除配置失败: \(error)")
-                }
-            }
-        }
-
         refreshConfigs()
-    }
-
-    private func defaultLocalDirectory() -> URL? {
-        guard let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
-            return nil
-        }
-
-        let targetDir = appSupport
-            .appendingPathComponent("Spotier", isDirectory: true)
-            .appendingPathComponent("Configs", isDirectory: true)
-
-        if !FileManager.default.fileExists(atPath: targetDir.path) {
-            try? FileManager.default.createDirectory(at: targetDir, withIntermediateDirectories: true)
-        }
-
-        return targetDir
-    }
-
-    private func triggerCloudSyncIfNeeded(force: Bool) {
-        guard cloudKitSyncEnabled else { return }
-        guard isICloudEnabled else { return }
-        guard !isCloudSyncInProgress || force else { return }
-        guard let localDir = currentDirectory else { return }
-
-        isCloudSyncInProgress = true
-
-        Task.detached { [weak self] in
-            guard let self else { return }
-
-            do {
-                let localChanged = try await CloudKitConfigSync.shared.sync(localDirectory: localDir)
-                DispatchQueue.main.async {
-                    self.isCloudSyncInProgress = false
-                    if localChanged {
-                        _ = self.refreshConfigs(skipCloudSync: true)
-                    }
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    self.isCloudSyncInProgress = false
-                    print("CloudKit 同步失败: \(error)")
-                }
-            }
-        }
     }
 
     private func directoryFromUserPreference() -> URL? {
@@ -248,48 +201,61 @@ class ConfigManager: ObservableObject {
                 )
 
                 if isStale {
-                    if let newBookmark = try? url.bookmarkData(
+                    customPathBookmark = try url.bookmarkData(
                         options: .withSecurityScope,
                         includingResourceValuesForKeys: nil,
                         relativeTo: nil
-                    ) {
-                        DispatchQueue.main.async { self.customPathBookmark = newBookmark }
-                    }
+                    )
                 }
                 return url
             } catch {
                 print("解析书签失败: \(error)")
-                DispatchQueue.main.async { self.customPathBookmark = nil }
+                customPathBookmark = nil
             }
         }
 
-        // 2. 尝试使用路径字符串（非沙盒或已授权路径）
         if !customPathString.isEmpty {
             return URL(fileURLWithPath: customPathString)
         }
 
-        // 3. 默认使用 Application Support（更符合应用配置文件惯例）
-        return defaultLocalDirectory()
+        return localDirectory
     }
 
-    private func enableCloudKitSync() {
-        guard let targetDir = defaultLocalDirectory() else { return }
+    private func enableICloudDriveStorage() {
+        guard let targetDir = iCloudDriveDirectory else { return }
 
-        // 在切换前先拿到用户当前目录，自动迁移配置，避免用户手动搬文件
+        migrateLegacyICloudDriveDirectoryIfNeeded()
+
         let sourceDir = directoryFromUserPreference()
         do {
             try migrateConfigsToDefaultDirectory(from: sourceDir, to: targetDir)
         } catch {
-            print("迁移配置到默认目录失败: \(error)")
+            print("迁移配置到 iCloud Drive 失败: \(error)")
             return
         }
 
         customPathBookmark = nil
         customPathString = targetDir.path
-        cloudKitSyncEnabled = true
+        iCloudDriveEnabled = true
+        _ = refreshConfigs()
+    }
 
-        _ = refreshConfigs(skipCloudSync: true)
-        triggerCloudSyncIfNeeded(force: true)
+    private func migrateLegacyICloudDriveDirectoryIfNeeded() {
+        guard
+            let legacyDir = legacyICloudDriveDirectory,
+            let targetDir = iCloudDriveDirectory,
+            FileManager.default.fileExists(atPath: legacyDir.path),
+            legacyDir.standardizedFileURL != targetDir.standardizedFileURL
+        else {
+            return
+        }
+
+        do {
+            try migrateConfigsToDefaultDirectory(from: legacyDir, to: targetDir)
+            try FileManager.default.removeItem(at: legacyDir)
+        } catch {
+            print("迁移旧 iCloud Drive Configs 目录失败: \(error)")
+        }
     }
 
     private func migrateConfigsToDefaultDirectory(from sourceDir: URL?, to targetDir: URL) throws {
@@ -317,13 +283,31 @@ class ConfigManager: ObservableObject {
                 continue
             }
 
-            let sourceDate = (try? sourceFile.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? Date.distantPast
-            let targetDate = (try? targetFile.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? Date.distantPast
+            let sourceDate = try sourceFile.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+            let targetDate = try targetFile.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
 
-            if sourceDate.timeIntervalSince(targetDate) > 1.0 {
-                try FileManager.default.removeItem(at: targetFile)
-                try FileManager.default.copyItem(at: sourceFile, to: targetFile)
+            if let sourceDate, let targetDate, sourceDate <= targetDate {
+                continue
             }
+
+            try FileManager.default.removeItem(at: targetFile)
+            try FileManager.default.copyItem(at: sourceFile, to: targetFile)
+        }
+    }
+
+    private func resolvedBookmarkPathForInitialization() -> String? {
+        guard let bookmark = customPathBookmark, !customPathString.isEmpty else { return nil }
+
+        var isStale = false
+        do {
+            return try URL(
+                resolvingBookmarkData: bookmark,
+                options: .withSecurityScope,
+                relativeTo: nil,
+                bookmarkDataIsStale: &isStale
+            ).path
+        } catch {
+            return nil
         }
     }
 }

@@ -2,7 +2,7 @@ import Foundation
 import NetworkExtension
 import Combine
 
-class VPNManager: ObservableObject {
+class VPNManager: ObservableObject, VPNControlling {
     static let shared = VPNManager()
     
     @Published var isConnected = false
@@ -11,7 +11,7 @@ class VPNManager: ObservableObject {
     @Published var isReady = false
     
     var isOnDemandEnabled: Bool {
-        manager?.isOnDemandEnabled ?? false
+        manager?.isOnDemandEnabled == true
     }
     
     /// NE 隧道的实际连接时间
@@ -44,35 +44,28 @@ class VPNManager: ObservableObject {
             
             if let error = error {
                 print("Error loading VPN preferences: \(error)")
-                DispatchQueue.main.async {
-                    self.statusText = "加载 VPN 配置失败: \(error.localizedDescription)"
-                }
+                self.statusText = "加载 VPN 配置失败: \(error.localizedDescription)"
                 return
             }
             
-            if let existingManager = managers?.first {
-                // 必须在主线程同步设置所有 @Published 属性，避免竞态
-                DispatchQueue.main.async {
-                    self.manager = existingManager
-                    // 同步更新状态（不再二次派发）
-                    self.updateStatusSync()
-                    // 状态已就绪后再标记 isReady，确保后续逻辑能读到正确的 isConnected
-                    self.isReady = true
-                    self.processPendingStartIfNeeded()
-                    
-                    // 仅在 On Demand 设置不一致时才 save，避免 saveToPreferences 导致系统重启隧道
-                    let connectOnStart = (UserDefaults.standard.object(forKey: "connectOnStart") as? Bool) ?? true
-                    if existingManager.isOnDemandEnabled != connectOnStart {
-                        self.applyOnDemandRules(to: existingManager)
-                        existingManager.saveToPreferences { error in
-                            if let error = error {
-                                print("VPNManager: Error updating On Demand rules: \(error)")
-                            }
-                        }
+            guard let existingManager = managers?.first else {
+                self.setupVPNProfile()
+                return
+            }
+
+            self.manager = existingManager
+            self.updateStatusSync()
+            self.isReady = true
+            self.processPendingStartIfNeeded()
+
+            let connectOnStartEnabled = UserDefaults.standard.bool(forKey: "connectOnStart")
+            if existingManager.isOnDemandEnabled != connectOnStartEnabled {
+                self.applyOnDemandRules(to: existingManager, enabled: connectOnStartEnabled)
+                self.saveManager(existingManager) { error in
+                    if let error = error {
+                        print("VPNManager: Error updating On Demand rules: \(error)")
                     }
                 }
-            } else {
-                self.setupVPNProfile()
             }
         }
     }
@@ -92,78 +85,51 @@ class VPNManager: ObservableObject {
         manager.isEnabled = true
         
         // Connect On Demand: 网络可用时系统自动启动 NE
-        applyOnDemandRules(to: manager)
+        applyOnDemandRules(to: manager, enabled: UserDefaults.standard.bool(forKey: "connectOnStart"))
         
-        manager.saveToPreferences { [weak self] error in
+        saveManager(manager) { [weak self] error in
             if let error = error {
                 print("VPNManager: Error saving VPN profile: \(error.localizedDescription)")
-                DispatchQueue.main.async {
-                    self?.statusText = "创建 VPN 配置失败: \(error.localizedDescription)"
-                }
+                self?.statusText = "创建 VPN 配置失败: \(error.localizedDescription)"
             } else {
                 print("VPNManager: VPN Profile saved successfully.")
-                // 二次保存确保持久化
-                manager.saveToPreferences { error in
-                    if let error = error {
-                        print("VPNManager: Error on second save: \(error)")
-                        DispatchQueue.main.async {
-                            self?.statusText = "保存 VPN 配置失败: \(error.localizedDescription)"
-                        }
-                    } else {
-                        print("VPNManager: Second save successful.")
-                    }
-                }
                 self?.loadPreferences()
             }
         }
     }
-    
-    /// 配置 Connect On Demand 规则
-    private func applyOnDemandRules(to manager: NETunnelProviderManager) {
-        let connectOnStart = (UserDefaults.standard.object(forKey: "connectOnStart") as? Bool) ?? true
-        
-        if connectOnStart {
-            // 任何网络可用时自动连接
+
+    private func applyOnDemandRules(to manager: NETunnelProviderManager, enabled: Bool) {
+        if enabled {
             let wifiRule = NEOnDemandRuleConnect()
             wifiRule.interfaceTypeMatch = .wiFi
-            
+
             let ethernetRule = NEOnDemandRuleConnect()
             ethernetRule.interfaceTypeMatch = .ethernet
-            
+
             manager.onDemandRules = [wifiRule, ethernetRule]
             manager.isOnDemandEnabled = true
-            print("VPNManager: Connect On Demand enabled")
         } else {
             manager.onDemandRules = []
             manager.isOnDemandEnabled = false
-            print("VPNManager: Connect On Demand disabled")
         }
+
+        print("VPNManager: Connect On Demand \(enabled ? "enabled" : "disabled")")
     }
     
     /// 外部调用：更新 On Demand 设置（设置页切换时调用）
     func updateOnDemand(enabled: Bool) {
         guard let manager = manager else { return }
         
-        manager.loadFromPreferences { [weak self] error in
-            guard let self = self, let mgr = self.manager else { return }
+        manager.loadFromPreferences { [weak self, manager] error in
+            guard let self else { return }
             if let error = error {
                 print("VPNManager: Error loading preferences for On Demand update: \(error)")
                 return
             }
             
-            if enabled {
-                let wifiRule = NEOnDemandRuleConnect()
-                wifiRule.interfaceTypeMatch = .wiFi
-                let ethernetRule = NEOnDemandRuleConnect()
-                ethernetRule.interfaceTypeMatch = .ethernet
-                mgr.onDemandRules = [wifiRule, ethernetRule]
-                mgr.isOnDemandEnabled = true
-            } else {
-                mgr.onDemandRules = []
-                mgr.isOnDemandEnabled = false
-            }
+            self.applyOnDemandRules(to: manager, enabled: enabled)
             
-            mgr.saveToPreferences { error in
+            self.saveManager(manager) { error in
                 if let error = error {
                     print("VPNManager: Error updating On Demand: \(error)")
                 } else {
@@ -173,29 +139,31 @@ class VPNManager: ObservableObject {
         }
     }
     
-    func saveConfigToAppGroup(configContent: String) -> URL? {
-        guard let groupURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: APP_GROUP_ID) else {
+    private func saveManager(_ manager: NETunnelProviderManager, completion: @escaping (Error?) -> Void) {
+        manager.saveToPreferences(completionHandler: completion)
+    }
+
+    func saveConfigToAppGroup(configContent: String) -> Bool {
+        guard let groupURL = appGroupContainerURL() else {
             print("Failed to get App Group container")
-            return nil
+            return false
         }
         
         let configURL = groupURL.appendingPathComponent("config.toml")
         do {
             try configContent.write(to: configURL, atomically: true, encoding: .utf8)
-            return configURL
+            return true
         } catch {
             print("Failed to write config to App Group: \(error)")
-            return nil
+            return false
         }
     }
 
     func startVPN(configContent: String) {
         guard let manager else {
             print("VPN Manager not ready, queue start request")
-            DispatchQueue.main.async {
-                self.pendingStartConfigContent = configContent
-                self.statusText = "VPN 初始化中，已排队启动..."
-            }
+            pendingStartConfigContent = configContent
+            statusText = "VPN 初始化中，已排队启动..."
             loadPreferences()
             return
         }
@@ -211,24 +179,23 @@ class VPNManager: ObservableObject {
         guard let manager = manager else { return }
         
         // Apple 要求 save 前先 load 最新状态
-        manager.loadFromPreferences { [weak self] error in
-            guard let self = self, let mgr = self.manager else { return }
+        manager.loadFromPreferences { [manager] error in
             if let error = error {
                 print("VPNManager: Error loading preferences: \(error)")
                 // 即使 load 失败也尝试 stop
-                mgr.connection.stopVPNTunnel()
+                manager.connection.stopVPNTunnel()
                 return
             }
             
-            mgr.isOnDemandEnabled = false
-            mgr.saveToPreferences { error in
+            manager.isOnDemandEnabled = false
+            self.saveManager(manager) { error in
                 if let error = error {
                     print("VPNManager: Error disabling On Demand: \(error)")
                 } else {
                     print("VPNManager: On Demand disabled, now stopping tunnel")
                 }
                 // save 完成后再 stop
-                mgr.connection.stopVPNTunnel()
+                manager.connection.stopVPNTunnel()
             }
         }
     }
@@ -254,48 +221,43 @@ class VPNManager: ObservableObject {
     /// Request running info JSON from NE via IPC
     func requestRunningInfo(completion: @escaping (String?) -> Void) {
         sendProviderMessage("running_info") { data in
-            if let data = data, let json = String(data: data, encoding: .utf8) {
-                completion(json)
-            } else {
+            guard let data, let json = String(data: data, encoding: .utf8) else {
                 completion(nil)
+                return
             }
+            completion(json)
         }
     }
     
     @objc private func vpnStatusDidChange(_ notification: Notification) {
-        DispatchQueue.main.async {
-            self.updateStatusSync()
-        }
+        updateStatusSync()
     }
     
     /// 同步更新状态，必须在主线程调用
     private func updateStatusSync() {
         guard let connection = manager?.connection else { return }
         
-        self.status = connection.status
-        
-        switch connection.status {
+        status = connection.status
+
+        let state: (Bool, String) = switch connection.status {
         case .connected:
-            self.isConnected = true
-            self.statusText = "已连接"
+            (true, "已连接")
         case .connecting:
-            self.isConnected = false
-            self.statusText = "连接中..."
+            (false, "连接中...")
         case .disconnected:
-            self.isConnected = false
-            self.statusText = "未连接"
+            (false, "未连接")
         case .disconnecting:
-            self.isConnected = false
-            self.statusText = "断开中..."
+            (false, "断开中...")
         case .invalid:
-            self.isConnected = false
-            self.statusText = "无效状态"
+            (false, "无效状态")
         case .reasserting:
-            self.isConnected = false
-            self.statusText = "重连中..."
+            (false, "重连中...")
         @unknown default:
-            self.statusText = "未知状态"
+            (false, "未知状态")
         }
+
+        isConnected = state.0
+        statusText = state.1
     }
 
     private func processPendingStartIfNeeded() {
@@ -315,7 +277,7 @@ class VPNManager: ObservableObject {
 
     private func performStartVPN(using manager: NETunnelProviderManager, configContent: String) {
         // 我们不直接通过 options 传递大文本，而是保存到 App Group
-        guard saveConfigToAppGroup(configContent: configContent) != nil else {
+        guard saveConfigToAppGroup(configContent: configContent) else {
             statusText = "保存配置失败"
             return
         }

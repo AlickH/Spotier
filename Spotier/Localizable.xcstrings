@@ -4,9 +4,6 @@
     "" : {
 
     },
-    "- ms" : {
-
-    },
     ":" : {
 
     },
@@ -661,6 +658,17 @@
         }
       }
     },
+    "关闭 iCloud Drive" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Turn Off iCloud Drive"
+          }
+        }
+      }
+    },
     "出口节点列表" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -811,28 +819,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "3. Simply turn on the toggle"
-          }
-        }
-      }
-    },
-    "同步到 iCloud" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Enable CloudKit Sync"
-          }
-        }
-      }
-    },
-    "关闭 CloudKit 同步" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Disable CloudKit Sync"
           }
         }
       }
@@ -1060,17 +1046,6 @@
         }
       }
     },
-    "存储位置: 本地（可启用 CloudKit）" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Storage: Local (CloudKit available)"
-          }
-        }
-      }
-    },
     "存储位置: 本地 (iCloud 未启用)" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1082,13 +1057,13 @@
         }
       }
     },
-    "存储方式: CloudKit 同步" : {
+    "存储位置: 本地（可切换到 iCloud Drive）" : {
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Storage: CloudKit Sync"
+            "value" : "Storage: Local (switch to iCloud Drive)"
           }
         }
       }
@@ -1100,6 +1075,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Store in iCloud"
+          }
+        }
+      }
+    },
+    "存储到 iCloud Drive" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Store in iCloud Drive"
+          }
+        }
+      }
+    },
+    "存储方式: iCloud Drive" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Storage: iCloud Drive"
           }
         }
       }
@@ -1466,17 +1463,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No Configs"
-          }
-        }
-      }
-    },
-    "未知节点" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unknown Peer"
           }
         }
       }
@@ -2360,6 +2346,9 @@
           }
         }
       }
+    },
+    "连接 %lld" : {
+
     },
     "连接 %lld [%@]" : {
       "extractionState" : "manual",

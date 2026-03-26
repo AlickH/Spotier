@@ -35,30 +35,6 @@ struct SparklineView: NSViewRepresentable {
             nsView.needsLayout = true
         }
     }
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-    
-    class Coordinator {
-        init() {
-            // Register as subscriber when view is actively instantiated (and likely to appear)
-            // But better done in onAppear.
-        }
-        deinit {
-            // Safety cleanup just in case
-            // DispatchQueue.main.async { SpotierRunner.shared.removeSubscriber() }
-        }
-    }
-}
-
-extension SparklineView {
-    // SwiftUI View Modifier wrapper to handle lifecycle
-    // Actually, NSViewRepresentable does not have body.
-    // We should rely on the PARENT view to add these modifiers or wrap this in a View.
-    // However, we can hack it by invoking side effects in updateNSView? No, that's bad.
-    // Best practice: The container (ConfigGeneratorView or PeerCard list) applies the logic.
-    // OR: We wrap this struct in a View.
 }
 
 // Wrapper to handle Lifecycle comfortably
@@ -112,9 +88,6 @@ final class SparklineNSView: NSView {
     // Scale Smoothing State
     private var currentRenderScale: Double = 100.0
     
-    // Phase Sync State
-    private var isFirstPhase: Bool = true
-    
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         setup()
@@ -164,12 +137,7 @@ final class SparklineNSView: NSView {
         dotLayer.borderColor = NSColor.white.cgColor
         dotLayer.position = .zero
         pulseContainer.addSublayer(dotLayer)
-        
-        dotLayer.borderColor = NSColor.white.cgColor
-        dotLayer.position = .zero
-        pulseContainer.addSublayer(dotLayer)
-        
-        // Removed auto-start halo. Now triggered by data.
+
         updateColors()
     }
     
@@ -341,12 +309,13 @@ final class SparklineNSView: NSView {
         let isFirstRealUpdate = (prevLastValue == nil) && !isLayoutPass
         
         if isFirstRealUpdate {
-            let lastTime = SpotierRunner.shared.lastDataTime
-            let now = Date()
-            let elapsed = now.timeIntervalSince(lastTime)
-            if elapsed >= 0 && elapsed < animationDuration {
-                catchUpProgress = elapsed / animationDuration
-                remainingDuration = animationDuration - elapsed
+            if let lastTime = SpotierRunner.shared.lastDataTime {
+                let now = Date()
+                let elapsed = now.timeIntervalSince(lastTime)
+                if elapsed >= 0 && elapsed < animationDuration {
+                    catchUpProgress = elapsed / animationDuration
+                    remainingDuration = animationDuration - elapsed
+                }
             }
             prevLastValue = newData.last
         } else if !isLayoutPass {

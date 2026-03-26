@@ -3,6 +3,7 @@ import SwiftUI
 struct ConfigEditorView: View {
     @Binding var isPresented: Bool
     let fileURL: URL
+    private let configRepository: ConfigFileAccessing = ConfigFileRepository.shared
     
     @State private var content: String = ""
     @State private var originalContent: String = ""
@@ -44,7 +45,7 @@ struct ConfigEditorView: View {
     
     private func loadContent() {
         do {
-            content = try ConfigManager.shared.readConfigContent(fileURL)
+            content = try configRepository.readContent(at: fileURL)
             originalContent = content
         } catch {
             errorMessage = error.localizedDescription
@@ -52,13 +53,8 @@ struct ConfigEditorView: View {
     }
     
     private func saveContent() {
-        // 获取安全域访问
-        let dirURL = ConfigManager.shared.currentDirectory
-        let isScoped = dirURL?.startAccessingSecurityScopedResource() ?? false
-        defer { if isScoped { dirURL?.stopAccessingSecurityScopedResource() } }
-        
         do {
-            try content.write(to: fileURL, atomically: true, encoding: .utf8)
+            try configRepository.updateContent(at: fileURL, content: content)
             originalContent = content
             
             withAnimation {

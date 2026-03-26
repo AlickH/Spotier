@@ -11,6 +11,7 @@
 		E0AB5CD32F3CCD9C00BD8CBA /* SpotierNE.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E0AB5CC92F3CCD9C00BD8CBA /* SpotierNE.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		E0AC7EEE2F19307C00FC425C /* ServiceManagement.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E0AC7EED2F19307C00FC425C /* ServiceManagement.framework */; };
 		E1AA00012F50000100AAA001 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1AA00042F50000100AAA001 /* XCTest.framework */; };
+		E1BB00012F60000100BBB001 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1AA00042F50000100AAA001 /* XCTest.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -27,6 +28,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = E0AB5CC82F3CCD9C00BD8CBA;
 			remoteInfo = SpotierNE;
+		};
+		E1BB00022F60000100BBB001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E0933DC42F16A25B00C7DE59 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E0933DCB2F16A25B00C7DE59;
+			remoteInfo = Spotier;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -70,6 +78,7 @@
 		E0AC7EED2F19307C00FC425C /* ServiceManagement.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ServiceManagement.framework; path = System/Library/Frameworks/ServiceManagement.framework; sourceTree = SDKROOT; };
 		E1AA00032F50000100AAA001 /* SpotierNETests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpotierNETests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E1AA00042F50000100AAA001 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = System/Library/Frameworks/XCTest.framework; sourceTree = SDKROOT; };
+		E1BB00032F60000100BBB001 /* SpotierTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpotierTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -111,6 +120,11 @@
 			path = SpotierNETests;
 			sourceTree = "<group>";
 		};
+		E1BB00052F60000100BBB001 /* SpotierTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SpotierTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -138,6 +152,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E1BB00062F60000100BBB001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E1BB00012F60000100BBB001 /* XCTest.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -147,6 +169,7 @@
 				E0933DCE2F16A25B00C7DE59 /* Spotier */,
 				E0AB5CCC2F3CCD9C00BD8CBA /* SpotierNE */,
 				E1AA00052F50000100AAA001 /* SpotierNETests */,
+				E1BB00052F60000100BBB001 /* SpotierTests */,
 				E0AC7EEC2F19307C00FC425C /* Frameworks */,
 				E0933DCD2F16A25B00C7DE59 /* Products */,
 			);
@@ -158,6 +181,7 @@
 				E0933DCC2F16A25B00C7DE59 /* Spotier.app */,
 				E0AB5CC92F3CCD9C00BD8CBA /* SpotierNE.appex */,
 				E1AA00032F50000100AAA001 /* SpotierNETests.xctest */,
+				E1BB00032F60000100BBB001 /* SpotierTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -246,6 +270,29 @@
 			productReference = E1AA00032F50000100AAA001 /* SpotierNETests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		E1BB00072F60000100BBB001 /* SpotierTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E1BB000D2F60000100BBB001 /* Build configuration list for PBXNativeTarget "SpotierTests" */;
+			buildPhases = (
+				E1BB00092F60000100BBB001 /* Sources */,
+				E1BB00062F60000100BBB001 /* Frameworks */,
+				E1BB00082F60000100BBB001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E1BB000A2F60000100BBB001 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				E1BB00052F60000100BBB001 /* SpotierTests */,
+			);
+			name = SpotierTests;
+			packageProductDependencies = (
+			);
+			productName = SpotierTests;
+			productReference = E1BB00032F60000100BBB001 /* SpotierTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -287,6 +334,9 @@
 					E1AA00072F50000100AAA001 = {
 						CreatedOnToolsVersion = 26.3;
 					};
+					E1BB00072F60000100BBB001 = {
+						CreatedOnToolsVersion = 26.3;
+					};
 				};
 			};
 			buildConfigurationList = E0933DC72F16A25B00C7DE59 /* Build configuration list for PBXProject "Spotier" */;
@@ -306,6 +356,7 @@
 				E0933DCB2F16A25B00C7DE59 /* Spotier */,
 				E0AB5CC82F3CCD9C00BD8CBA /* SpotierNE */,
 				E1AA00072F50000100AAA001 /* SpotierNETests */,
+				E1BB00072F60000100BBB001 /* SpotierTests */,
 			);
 		};
 /* End PBXProject section */
@@ -326,6 +377,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		E1AA00082F50000100AAA001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E1BB00082F60000100BBB001 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -356,6 +414,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E1BB00092F60000100BBB001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -368,6 +433,11 @@
 			isa = PBXTargetDependency;
 			target = E0AB5CC82F3CCD9C00BD8CBA /* SpotierNE */;
 			targetProxy = E1AA00022F50000100AAA001 /* PBXContainerItemProxy */;
+		};
+		E1BB000A2F60000100BBB001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E0933DCB2F16A25B00C7DE59 /* Spotier */;
+			targetProxy = E1BB00022F60000100BBB001 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -507,7 +577,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CREATE_INFOPLIST_SECTION_IN_BINARY = YES;
-					CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = KLU8GF65GP;
 				ENABLE_APP_SANDBOX = YES;
@@ -569,7 +639,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CREATE_INFOPLIST_SECTION_IN_BINARY = YES;
-					CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = KLU8GF65GP;
 				ENABLE_APP_SANDBOX = YES;
@@ -626,7 +696,7 @@
 				CODE_SIGN_ENTITLEMENTS = SpotierNE/SpotierNE.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-					CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = KLU8GF65GP;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -686,7 +756,7 @@
 				CODE_SIGN_ENTITLEMENTS = SpotierNE/SpotierNE.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-					CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = KLU8GF65GP;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -773,6 +843,42 @@
 			};
 			name = Release;
 		};
+		E1BB000B2F60000100BBB001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 5;
+				DEVELOPMENT_TEAM = KLU8GF65GP;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.alick.spotier.SpotierTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Spotier.app/Contents/MacOS/Spotier";
+				TEST_TARGET_NAME = Spotier;
+			};
+			name = Debug;
+		};
+		E1BB000C2F60000100BBB001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 5;
+				DEVELOPMENT_TEAM = KLU8GF65GP;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				PRODUCT_BUNDLE_IDENTIFIER = com.alick.spotier.SpotierTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Spotier.app/Contents/MacOS/Spotier";
+				TEST_TARGET_NAME = Spotier;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -808,6 +914,15 @@
 			buildConfigurations = (
 				E1AA000B2F50000100AAA001 /* Debug */,
 				E1AA000C2F50000100AAA001 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E1BB000D2F60000100BBB001 /* Build configuration list for PBXNativeTarget "SpotierTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E1BB000B2F60000100BBB001 /* Debug */,
+				E1BB000C2F60000100BBB001 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

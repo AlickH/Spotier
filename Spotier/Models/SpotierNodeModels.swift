@@ -18,7 +18,7 @@ struct SpotierStatus: Codable {
 
         var description: String {
             switch self {
-            case .unknown:          return "Unknown"
+            case .unknown:          return ""
             case .openInternet:     return "Open Internet"
             case .noPAT:            return "No PAT"
             case .fullCone:         return "Full Cone"
@@ -127,16 +127,11 @@ struct SpotierStatus: Codable {
             }
             
             var buffer = [Int8](repeating: 0, count: Int(INET6_ADDRSTRLEN))
-            
-            if inet_ntop(AF_INET6, &addr, &buffer, socklen_t(INET6_ADDRSTRLEN)) != nil {
-                return String(cString: buffer)
-            }
-            // fallback
-            let parts = [part1, part2, part3, part4]
-            let segments = parts.flatMap { part -> [UInt16] in
-                [UInt16(part >> 16), UInt16(part & 0xFFFF)]
-            }
-            return segments.map { String(format: "%04x", $0) }.joined(separator: ":")
+            precondition(
+                inet_ntop(AF_INET6, &addr, &buffer, socklen_t(INET6_ADDRSTRLEN)) != nil,
+                "Failed to format IPv6 address"
+            )
+            return String(cString: buffer)
         }
     }
 

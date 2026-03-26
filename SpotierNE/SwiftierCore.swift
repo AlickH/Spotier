@@ -27,7 +27,7 @@ struct EasyTierCore {
         }
         
         if ret != 0 {
-            let msg = extractRustError(errPtr) ?? "Unknown logger error"
+            let msg = extractRustError(errPtr) ?? ""
             throw EasyTierError.initializationFailed(msg)
         }
     }
@@ -40,7 +40,7 @@ struct EasyTierCore {
         }
         
         if ret != 0 {
-            let msg = extractRustError(errPtr) ?? "Unknown network start error"
+            let msg = extractRustError(errPtr) ?? ""
             throw EasyTierError.executionFailed(msg)
         }
     }
@@ -56,7 +56,7 @@ struct EasyTierCore {
         let ret = set_tun_fd(fd, &errPtr)
         
         if ret != 0 {
-            let msg = extractRustError(errPtr) ?? "Unknown tun fd error"
+            let msg = extractRustError(errPtr) ?? ""
             throw EasyTierError.executionFailed(msg)
         }
     }
@@ -66,7 +66,7 @@ struct EasyTierCore {
         var errPtr: UnsafePointer<CChar>? = nil
         let ret = register_stop_callback(callback, &errPtr)
         if ret != 0 {
-            let msg = extractRustError(errPtr) ?? "Failed to register stop callback"
+            let msg = extractRustError(errPtr) ?? ""
             throw EasyTierError.initializationFailed(msg)
         }
     }
@@ -95,7 +95,7 @@ struct EasyTierCore {
         var errPtr: UnsafePointer<CChar>? = nil
         let ret = register_running_info_callback(callback, &errPtr)
         if ret != 0 {
-            let msg = extractRustError(errPtr) ?? "Failed to register running info callback"
+            let msg = extractRustError(errPtr) ?? ""
             throw EasyTierError.initializationFailed(msg)
         }
     }

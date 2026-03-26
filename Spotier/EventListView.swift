@@ -64,7 +64,7 @@ struct EventListView: View {
                                 .padding(.trailing, 8)
                                 
                                 VStack(alignment: .leading, spacing: 8) {
-                                    Text(event.type.rawValue)
+                                    Text(event.name)
                                         .font(.system(size: 16, weight: .bold))
                                     
                                     CharWrappingJSONView(json: event.details, highlights: event.highlights ?? [], eventId: event.id)
@@ -83,18 +83,13 @@ struct EventListView: View {
                     .scrollContentBackground(.hidden)
                     .listStyle(.plain)
                     
-                    Button {
+                    FloatingScrollTopButton(action: {
                         if let topEvent = events.last {
                             withAnimation(.easeInOut(duration: 0.3)) {
                                 proxy.scrollTo(topEvent.id, anchor: .top)
                             }
                         }
-                    } label: {
-                        Image(systemName: "arrow.up")
-                            .font(.system(size: 20, weight: .bold))
-                            .modifier(FlatCircleButtonModifier())
-                    }
-                    .buttonStyle(.plain)
+                    })
                     .padding(16)
                 }
             }
@@ -173,22 +168,5 @@ struct CharWrappingJSONView: NSViewRepresentable {
             }
         }
         return attributed
-    }
-}
-
-struct FlatCircleButtonModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .foregroundStyle(.white)
-            .padding(12) // 保持足够的点击区域
-            .background(
-                Circle()
-                    .fill(Color.blue)
-            )
-            .contentShape(Circle())
-            .onHover { isHovering in
-                if isHovering { NSCursor.pointingHand.push() }
-                else { NSCursor.pop() }
-            }
     }
 }

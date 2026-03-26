@@ -8,7 +8,13 @@ struct SpotierControlApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var runner = SpotierRunner.shared
     @StateObject private var iconState = MenuBarIconState.shared
-    @AppStorage("breathEffect") private var breathEffect: Bool = true
+
+    init() {
+        UserDefaults.standard.register(defaults: [
+            "connectOnStart": true,
+            "breathEffect": true
+        ])
+    }
     
     var body: some Scene {
         MenuBarExtra {
@@ -32,6 +38,7 @@ struct MenuBarLabelView: View {
 }
 
 // 菜单栏图标状态管理
+@MainActor
 class MenuBarIconState: ObservableObject {
     static let shared = MenuBarIconState()
     
@@ -46,7 +53,6 @@ class MenuBarIconState: ObservableObject {
     private init() {
         // 优化：监听运行状态变化，按需启停 Timer
         SpotierRunner.shared.$isRunning
-            .receive(on: DispatchQueue.main)
             .sink { [weak self] isRunning in
                 self?.handleRunningStateChange(isRunning: isRunning)
             }
@@ -54,7 +60,6 @@ class MenuBarIconState: ObservableObject {
         
         // 监听 breathEffect 设置变化
         NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)
-            .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.updateTimerState()
             }
@@ -68,7 +73,7 @@ class MenuBarIconState: ObservableObject {
     
     private func updateTimerState() {
         let isRunning = SpotierRunner.shared.isRunning
-        let blinkEnabled = (UserDefaults.standard.object(forKey: "breathEffect") as? Bool) ?? true
+        let blinkEnabled = UserDefaults.standard.bool(forKey: "breathEffect")
         
         if isRunning && blinkEnabled {
             startTimer()
@@ -82,10 +87,9 @@ class MenuBarIconState: ObservableObject {
         guard animationTimer == nil else { return }
         
         animationTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            // 呼吸效果：切换实心/空心
-            self.isShowingFilled.toggle()
-            self.currentIcon = self.isShowingFilled ? self.iconFilled : self.iconOutline
+            Task { @MainActor [weak self] in
+                self?.tickAnimation()
+            }
         }
     }
     
@@ -95,18 +99,21 @@ class MenuBarIconState: ObservableObject {
     }
     
     private func updateIcon(isRunning: Bool) {
-        if isRunning {
-            currentIcon = iconFilled
-            isShowingFilled = true
-        } else {
-            currentIcon = iconOutline
-            isShowingFilled = true
-        }
+        isShowingFilled = true
+        currentIcon = isRunning ? iconFilled : iconOutline
+    }
+
+    private func tickAnimation() {
+        isShowingFilled.toggle()
+        currentIcon = isShowingFilled ? iconFilled : iconOutline
     }
 }
 
+@MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
+    private static let selectedConfigPathDefaultsKey = "selected_config_path"
     private var cancellables = Set<AnyCancellable>()
+    private let configRepository: ConfigFileAccessing = ConfigFileRepository.shared
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -128,7 +135,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         VPNManager.shared.$isReady
             .filter { $0 }
             .first()
-            .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.syncStateOnLaunch()
             }
@@ -137,7 +143,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     private func syncStateOnLaunch() {
         let vpn = VPNManager.shared
-        let connectOnStart = (UserDefaults.standard.object(forKey: "connectOnStart") as? Bool) ?? true
+        let connectOnStart = UserDefaults.standard.bool(forKey: "connectOnStart")
         print("[Launch] VPN status: \(vpn.status.rawValue), isConnected: \(vpn.isConnected), onDemand: \(vpn.isOnDemandEnabled)")
         
         // 同步 Runner 的 UI 状态
@@ -156,8 +162,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // 如果开启了自动连接，手动触发一次（首次安装或 On Demand 尚未生效时）
         if connectOnStart {
-            let configs = ConfigManager.shared.refreshConfigs()
-            if let config = configs.first {
+            let configs = configRepository.refreshConfigs()
+            if let savedPath = UserDefaults.standard.string(forKey: Self.selectedConfigPathDefaultsKey),
+               let config = configs.first(where: { $0.path == savedPath }) {
                 print("[Launch] Triggering initial connect with: \(config.lastPathComponent)")
                 SpotierRunner.shared.toggleService(configPath: config.path)
             }
