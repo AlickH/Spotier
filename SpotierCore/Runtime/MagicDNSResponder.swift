@@ -71,9 +71,18 @@ struct MagicDNSResponder {
         udpPayload.appendUInt16(UInt16(8 + dnsPayload.count))
         udpPayload.appendUInt16(0)
         udpPayload.append(dnsPayload)
+        let responseSource = resolverIPv4
+        let responseDestination = packet.ipv4String(at: 12)
+        let udpChecksum = udpIPv4Checksum(
+            udpPayload: udpPayload,
+            source: responseSource,
+            destination: responseDestination
+        )
+        udpPayload[6] = UInt8(udpChecksum >> 8)
+        udpPayload[7] = UInt8(udpChecksum & 0xFF)
         return ipv4Packet(
-            source: resolverIPv4,
-            destination: packet.ipv4String(at: 12),
+            source: responseSource,
+            destination: responseDestination,
             protocolNumber: 17,
             payload: udpPayload
         )
@@ -211,6 +220,17 @@ struct MagicDNSResponder {
             sum = (sum & 0xFFFF) + (sum >> 16)
         }
         return UInt16(~sum & 0xFFFF)
+    }
+
+    private func udpIPv4Checksum(udpPayload: Data, source: String, destination: String) -> UInt16 {
+        var data = Data()
+        data.append(contentsOf: ipv4Bytes(source))
+        data.append(contentsOf: ipv4Bytes(destination))
+        data.append(0)
+        data.append(17)
+        data.appendUInt16(UInt16(udpPayload.count))
+        data.append(udpPayload)
+        return internetChecksum(data)
     }
 
     private func ipv4Bytes(_ address: String) -> [UInt8] {

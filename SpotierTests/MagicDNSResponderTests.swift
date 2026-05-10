@@ -29,6 +29,8 @@ final class MagicDNSResponderTests: XCTestCase {
         XCTAssertEqual(response[21], 53)
         XCTAssertEqual(response[22], 207)
         XCTAssertEqual(response[23], 9)
+        XCTAssertNotEqual(response.readUInt16(at: 26), 0)
+        XCTAssertEqual(udpIPv4Checksum(packet: response), 0)
         let answerOffset = 28 + 12 + dnsQuestionLength(name: "peer.et.net")
         XCTAssertEqual(response.readUInt32(at: answerOffset + 6), 1)
         XCTAssertEqual(response.suffix(4).map(Int.init), [10, 0, 0, 2])
@@ -57,6 +59,8 @@ final class MagicDNSResponderTests: XCTestCase {
         XCTAssertEqual(response[21], 53)
         XCTAssertEqual(response[22], 207)
         XCTAssertEqual(response[23], 9)
+        XCTAssertNotEqual(response.readUInt16(at: 26), 0)
+        XCTAssertEqual(udpIPv4Checksum(packet: response), 0)
         XCTAssertEqual(response.readUInt16(at: 30), 0x8183)
         XCTAssertEqual(response.readUInt16(at: 32), 1)
         XCTAssertEqual(response.readUInt16(at: 34), 0)
@@ -74,6 +78,8 @@ final class MagicDNSResponderTests: XCTestCase {
         XCTAssertEqual(response.readUInt16(at: 30), 0x8180)
         XCTAssertEqual(response.readUInt16(at: 32), 1)
         XCTAssertEqual(response.readUInt16(at: 34), 1)
+        XCTAssertNotEqual(response.readUInt16(at: 26), 0)
+        XCTAssertEqual(udpIPv4Checksum(packet: response), 0)
         XCTAssertEqual(response.readUInt16(at: 48), 6)
         XCTAssertEqual(response.readUInt16(at: 50), 1)
     }
@@ -221,6 +227,18 @@ final class MagicDNSResponderTests: XCTestCase {
             sum = (sum & 0xFFFF) + (sum >> 16)
         }
         return UInt16(~sum & 0xFFFF)
+    }
+
+    private func udpIPv4Checksum(packet: Data) -> UInt16 {
+        let headerLength = Int(packet[0] & 0x0F) * 4
+        var data = Data()
+        data.append(packet.subdata(in: 12..<16))
+        data.append(packet.subdata(in: 16..<20))
+        data.append(0)
+        data.append(packet[9])
+        data.appendUInt16(packet.readUInt16(at: headerLength + 4))
+        data.append(packet.subdata(in: headerLength..<packet.count))
+        return internetChecksum(data)
     }
 }
 

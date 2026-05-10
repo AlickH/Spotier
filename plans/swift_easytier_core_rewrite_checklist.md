@@ -493,6 +493,7 @@
 - [x] Drop IPv6 link-local destination packets instead of routing them through exit nodes.
 - [x] Treat IPv4/IPv6 network last-address destinations as mesh fan-out using the configured prefix length.
 - [x] Respond to ICMP echo requests sent to the MagicDNS resolver address.
+- [x] Compute IPv4 UDP checksums for MagicDNS DNS responses.
 
 ## Explicitly Out Of Scope
 
