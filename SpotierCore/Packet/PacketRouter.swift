@@ -55,6 +55,9 @@ struct PacketRouter {
             if isSameIPv6Network(destination, localCIDR: localIPv6) {
                 return .drop
             }
+            if isIPv6LinkLocalDestination(packet) {
+                return .drop
+            }
             if p2pOnly {
                 return .drop
             }
@@ -106,6 +109,11 @@ struct PacketRouter {
             return false
         }
         return ipv6.sourceAddress.lowercased() != addressPart(localIPv6)?.lowercased()
+    }
+
+    private func isIPv6LinkLocalDestination(_ packet: IPPacket) -> Bool {
+        guard case .ipv6(let ipv6) = packet else { return false }
+        return isIPv6LinkLocal(ipv6.destinationAddress)
     }
 
     private func isSameIPv4Network(_ address: String, localCIDR: String?) -> Bool {

@@ -490,6 +490,7 @@
 - [x] Skip invalid MagicDNS hostnames while preserving Unicode hostname records.
 - [x] Drop IPv6 packets from foreign link-local sources unless the source is the configured local IPv6 address.
 - [x] Forward IPv4 broadcast/multicast and IPv6 multicast packets to all known peers using the encrypted data path.
+- [x] Drop IPv6 link-local destination packets instead of routing them through exit nodes.
 
 ## Explicitly Out Of Scope
 

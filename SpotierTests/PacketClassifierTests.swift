@@ -257,6 +257,32 @@ final class PacketClassifierTests: XCTestCase {
         XCTAssertEqual(router.route(localLinkLocalPacket), .peer(PeerID(2)))
     }
 
+    func testIPv6LinkLocalDestinationDoesNotUseExitNode() throws {
+        let packet = try PacketClassifier.parse(ipv6Packet(
+            source: [0xfd00, 0, 0, 0, 0, 0, 0, 1],
+            destination: [0xfe80, 0, 0, 0, 0, 0, 0, 8],
+            nextHeader: 17,
+            payload: []
+        ))
+        var table = RouteTable()
+        table.apply(RouteUpdate(
+            peerID: PeerID(2),
+            ipv4Address: nil,
+            ipv6Address: "fd00:0:0:0:0:0:0:2",
+            nextHopPeerID: PeerID(2),
+            cost: 1,
+            proxyCIDRs: []
+        ))
+
+        let router = PacketRouter(
+            routeTable: table,
+            localIPv6: "fd00:0:0:0:0:0:0:1/64",
+            exitNodes: ["fd00:0:0:0:0:0:0:2"]
+        )
+
+        XCTAssertEqual(router.route(packet), .drop)
+    }
+
     func testIPv4BroadcastAndMulticastForwardToAllKnownPeersExceptLocalPeer() throws {
         let broadcast = try PacketClassifier.parse(ipv4Packet(
             source: [10, 126, 126, 4],
