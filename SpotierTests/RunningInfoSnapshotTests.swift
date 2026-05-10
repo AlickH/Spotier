@@ -116,4 +116,45 @@ final class RunningInfoSnapshotTests: XCTestCase {
 
         XCTAssertEqual(urls, ["udp://0.0.0.0:11010", "udp://198.51.100.9:21010"])
     }
+
+    func testRunningInfoGroupsPeerHostRouteWithProxyCIDRs() throws {
+        var store = PeerStore()
+        store.upsert(Peer(
+            id: PeerID(2),
+            hostname: "peer",
+            virtualIPv4: "10.0.0.2/24",
+            virtualIPv6: nil,
+            publicKey: Data(),
+            knownEndpoints: [],
+            lastSeen: Date()
+        ))
+        var routes = RouteTable()
+        routes.apply(RouteUpdate(
+            peerID: PeerID(2),
+            ipv4Address: "10.0.0.2",
+            ipv6Address: nil,
+            nextHopPeerID: PeerID(2),
+            cost: 2,
+            proxyCIDRs: ["192.168.77.0/24", "192.168.88.0/24"]
+        ))
+
+        let snapshot = RunningInfoSnapshot.make(
+            localIdentity: nil,
+            configuration: MeshEngineConfiguration(networkName: "easytier", networkSecret: "secret"),
+            peerStore: store,
+            routeTable: routes,
+            events: [],
+            running: true,
+            errorMessage: nil
+        )
+        let json = try JSONSerialization.jsonObject(with: snapshot.jsonData()) as? [String: Any]
+        let routeRows = json?["routes"] as? [[String: Any]]
+        let route = try XCTUnwrap(routeRows?.first)
+        let ipv4Address = route["ipv4_addr"] as? [String: Any]
+        let address = ipv4Address?["address"] as? [String: Any]
+
+        XCTAssertEqual(routeRows?.count, 1)
+        XCTAssertEqual(address?["addr"] as? Int, 167772162)
+        XCTAssertEqual(route["proxy_cidrs"] as? [String], ["192.168.77.0/24", "192.168.88.0/24"])
+    }
 }

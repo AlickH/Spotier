@@ -28,20 +28,7 @@ struct RunningInfoSnapshot: Codable, Equatable {
         running: Bool,
         errorMessage: String?
     ) -> RunningInfoSnapshot {
-        let routeRows = routeTable.routes.map { route in
-            Route(
-                peerID: Int(route.ownerPeerID.rawValue),
-                ipv4Address: IPv4CIDR(route.destination),
-                ipv6Address: IPv6CIDR(route.destination),
-                nextHopPeerID: Int(route.nextHopPeerID.rawValue),
-                cost: route.cost,
-                pathLatency: 0,
-                proxyCIDRs: route.kind == .subnetProxy ? [route.destination] : [],
-                hostname: peerStore.peer(id: route.ownerPeerID)?.hostname ?? "",
-                instID: "",
-                version: ""
-            )
-        }
+        let routeRows = makeRouteRows(peerStore: peerStore, routeTable: routeTable)
 
         let peerRows = peerStore.peers.map { peer in
             PeerInfo(
@@ -84,6 +71,52 @@ struct RunningInfoSnapshot: Codable, Equatable {
 
     func jsonData() throws -> Data {
         try JSONEncoder().encode(self)
+    }
+
+    private static func makeRouteRows(peerStore: PeerStore, routeTable: RouteTable) -> [Route] {
+        var rows: [Route] = []
+
+        for route in routeTable.routes {
+            let index = rows.firstIndex { $0.peerID == Int(route.ownerPeerID.rawValue) }
+            let existing = index.map { rows[$0] }
+            let row = updatedRouteRow(existing, with: route, peerStore: peerStore)
+            if let index {
+                rows[index] = row
+            } else {
+                rows.append(row)
+            }
+        }
+
+        return rows
+    }
+
+    private static func updatedRouteRow(
+        _ row: Route?,
+        with route: VirtualRoute,
+        peerStore: PeerStore
+    ) -> Route {
+        var row = row ?? Route(
+            peerID: Int(route.ownerPeerID.rawValue),
+            ipv4Address: nil,
+            ipv6Address: nil,
+            nextHopPeerID: Int(route.nextHopPeerID.rawValue),
+            cost: route.cost,
+            pathLatency: 0,
+            proxyCIDRs: [],
+            hostname: peerStore.peer(id: route.ownerPeerID)?.hostname ?? "",
+            instID: "",
+            version: ""
+        )
+
+        switch route.kind {
+        case .host:
+            row.ipv4Address = IPv4CIDR(route.destination) ?? row.ipv4Address
+            row.ipv6Address = IPv6CIDR(route.destination) ?? row.ipv6Address
+        case .subnetProxy:
+            row.proxyCIDRs.append(route.destination)
+        }
+
+        return row
     }
 }
 
