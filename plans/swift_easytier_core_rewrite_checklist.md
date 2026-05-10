@@ -289,15 +289,16 @@
 - Create: `SpotierCore/Packet/PacketRouter.swift`
 - Test: `SpotierTests/PacketClassifierTests.swift`
 
-- [ ] Parse IPv4 source, destination, protocol, and payload length.
-- [ ] Parse IPv6 source, destination, next header, and payload length.
-- [ ] Reject non-IP packets.
-- [ ] Route destination IP through `RouteTable`.
-- [ ] Return local, peer, subnetProxy, or drop.
-- [ ] Test IPv4 classification.
-- [ ] Test IPv6 classification.
-- [ ] Test unknown route produces drop.
-- [ ] Commit.
+- [x] Parse IPv4 source, destination, protocol, and payload length.
+- [x] Parse IPv6 source, destination, next header, and payload length.
+- [x] Reject non-IP packets.
+- [x] Route destination IP through `RouteTable`.
+- [x] Return local, peer, subnetProxy, or drop.
+- [x] Test IPv4 classification.
+- [x] Test IPv6 classification.
+- [x] Test unknown route produces drop.
+- [ ] Run packet classifier tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Commit.
 
 ### Task 12: Wire Packet Tunnel To MeshEngine
 
