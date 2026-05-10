@@ -189,18 +189,19 @@
 - Create: `SpotierCore/Crypto/SessionCrypto.swift`
 - Test: `SpotierTests/SessionCryptoTests.swift`
 
-- [ ] Use CryptoKit primitives available on iOS, tvOS, and macOS.
-- [ ] Define one handshake path for Spotier peers.
-- [ ] Bind the handshake to network name, peer IDs, and public keys.
-- [ ] Produce separate send and receive keys.
-- [ ] Encrypt data packets with authenticated encryption.
-- [ ] Include sequence number in authenticated data.
-- [ ] Reject replayed sequence numbers.
-- [ ] Test two peers derive matching session keys.
-- [ ] Test wrong network secret fails authentication.
-- [ ] Test replay rejection.
-- [ ] Test tamper rejection.
-- [ ] Commit.
+- [x] Use CryptoKit primitives available on iOS, tvOS, and macOS.
+- [x] Define one handshake path for Spotier peers.
+- [x] Bind the handshake to network name, peer IDs, and public keys.
+- [x] Produce separate send and receive keys.
+- [x] Encrypt data packets with authenticated encryption.
+- [x] Include sequence number in authenticated data.
+- [x] Reject replayed sequence numbers.
+- [x] Test two peers derive matching session keys.
+- [x] Test wrong network secret fails authentication.
+- [x] Test replay rejection.
+- [x] Test tamper rejection.
+- [ ] Run session crypto tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Commit.
 
 ### Task 7: Implement UDP Transport
 

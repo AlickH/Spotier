@@ -8,6 +8,7 @@ struct NodeIdentity: Equatable {
     var virtualIPv4: String?
     var virtualIPv6: String?
     var publicKey: Data
+    var privateKey: Data
 
     static func derive(
         network: NetworkSecret,
@@ -29,7 +30,8 @@ struct NodeIdentity: Equatable {
             hostname: hostname,
             virtualIPv4: virtualIPv4,
             virtualIPv6: virtualIPv6,
-            publicKey: privateKey.publicKey.rawRepresentation
+            publicKey: privateKey.publicKey.rawRepresentation,
+            privateKey: privateKey.rawRepresentation
         )
     }
 }
