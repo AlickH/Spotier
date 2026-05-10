@@ -76,8 +76,8 @@
 - [x] Host app no longer calls Rust FFI wrappers.
 - [x] `EasyTierCore/` is no longer part of build inputs.
 - [x] macOS build passes.
-- [x] iOS build passes if target exists. Current project has no iOS scheme or target.
-- [x] tvOS build passes if target exists. Current project has no tvOS scheme or target.
+- [x] Swift core typechecks against the iOS SDK.
+- [x] Swift core typechecks against the tvOS SDK. `NEPacketTunnelFlow` requires tvOS 17.0.
 - [x] Unit tests cover identity, frame codec, route calculation, packet classification, session encryption, and peer lifecycle.
 
 ## Execution Checklist
