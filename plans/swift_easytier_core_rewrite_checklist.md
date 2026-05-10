@@ -249,17 +249,18 @@
 - Create: `SpotierCore/Mesh/PeerManager.swift`
 - Test: `SpotierTests/PeerManagerTests.swift`
 
-- [ ] Define `Peer` with ID, hostname, virtual addresses, known endpoints, relay availability, last seen, and route cost.
-- [ ] Define `PeerSession` with handshake state, crypto state, transport preference, and health state.
-- [ ] Implement hello exchange.
-- [ ] Implement session offer and answer.
-- [ ] Implement peer ping and pong.
-- [ ] Mark peers stale after a single configured timeout.
-- [ ] Remove stale peers through one cleanup path.
-- [ ] Test peer addition from hello.
-- [ ] Test session establishment.
-- [ ] Test stale peer removal.
-- [ ] Commit.
+- [x] Define `Peer` with ID, hostname, virtual addresses, known endpoints, relay availability, last seen, and route cost.
+- [x] Define `PeerSession` with handshake state, crypto state, transport preference, and health state.
+- [x] Implement hello exchange.
+- [x] Implement session offer and answer.
+- [x] Implement peer ping and pong.
+- [x] Mark peers stale after a single configured timeout.
+- [x] Remove stale peers through one cleanup path.
+- [x] Test peer addition from hello.
+- [x] Test session establishment.
+- [x] Test stale peer removal.
+- [ ] Run peer manager tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Commit.
 
 ### Task 10: Implement Routing
 
