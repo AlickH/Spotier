@@ -25,6 +25,7 @@ final class CoreConfigParserTests: XCTestCase {
 
         XCTAssertEqual(result.configuration.networkName, "easytier")
         XCTAssertEqual(result.configuration.networkSecret, "secret")
+        XCTAssertEqual(result.configuration.instanceName, "Mac")
         XCTAssertEqual(result.configuration.virtualIPv4, "10.126.126.4/24")
         XCTAssertEqual(result.configuration.peers, ["tcp://public.easytier.top:11010"])
         XCTAssertEqual(result.configuration.listeners, [

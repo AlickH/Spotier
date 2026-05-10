@@ -36,7 +36,7 @@ final class MeshEngine {
                 secret: configuration.networkSecret
             ),
             deviceSeed: deviceSeed,
-            hostname: Host.current().localizedName ?? "spotier",
+            hostname: configuration.instanceName ?? Host.current().localizedName ?? "spotier",
             virtualIPv4: configuration.virtualIPv4,
             virtualIPv6: configuration.virtualIPv6
         )

@@ -85,6 +85,7 @@ enum CoreConfigParser {
         let configuration = MeshEngineConfiguration(
             networkName: networkName,
             networkSecret: networkSecret,
+            instanceName: topLevel["instance_name"],
             virtualIPv4: topLevel["ipv4"],
             virtualIPv6: disableIPv6 ? nil : topLevel["ipv6"],
             peers: peers,

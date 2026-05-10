@@ -3,6 +3,7 @@ import Foundation
 struct MeshEngineConfiguration: Equatable {
     var networkName: String
     var networkSecret: String
+    var instanceName: String?
     var virtualIPv4: String?
     var virtualIPv6: String?
     var peers: [String]
@@ -15,6 +16,7 @@ struct MeshEngineConfiguration: Equatable {
     init(
         networkName: String,
         networkSecret: String,
+        instanceName: String? = nil,
         virtualIPv4: String? = nil,
         virtualIPv6: String? = nil,
         peers: [String] = [],
@@ -26,6 +28,7 @@ struct MeshEngineConfiguration: Equatable {
     ) {
         self.networkName = networkName
         self.networkSecret = networkSecret
+        self.instanceName = instanceName
         self.virtualIPv4 = virtualIPv4
         self.virtualIPv6 = virtualIPv6
         self.peers = peers

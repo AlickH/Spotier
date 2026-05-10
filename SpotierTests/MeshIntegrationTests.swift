@@ -84,6 +84,20 @@ final class MeshIntegrationTests: XCTestCase {
         }
     }
 
+    func testEngineUsesConfiguredInstanceNameAsLocalHostname() async throws {
+        let engine = MeshEngine()
+        try await engine.start(configuration: MeshEngineConfiguration(
+            networkName: "easytier",
+            networkSecret: "secret",
+            instanceName: "office-node"
+        ))
+        defer {
+            Task { await engine.stop() }
+        }
+
+        XCTAssertEqual(engine.localIdentity?.hostname, "office-node")
+    }
+
     func testOneWayConfiguredPeerEstablishesRouteAndTransfersPacket() async throws {
         let transportA = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19120))
         let transportB = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19121))
