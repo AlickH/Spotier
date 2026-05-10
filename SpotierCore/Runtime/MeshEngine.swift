@@ -185,7 +185,7 @@ final class MeshEngine {
 
     private func receive(_ inbound: TransportInboundFrame) async {
         do {
-            guard acceptsFrameReceiver(inbound.frame.receiver) else {
+            guard acceptsFrameReceiver(inbound.frame) else {
                 events.append(.logLine("Dropped frame addressed to another peer"))
                 return
             }
@@ -237,8 +237,14 @@ final class MeshEngine {
         }
     }
 
-    private func acceptsFrameReceiver(_ receiver: PeerID) -> Bool {
-        receiver == PeerID(0) || receiver == localIdentity?.peerID
+    private func acceptsFrameReceiver(_ frame: CoreFrame) -> Bool {
+        if frame.receiver == localIdentity?.peerID {
+            return true
+        }
+        if frame.receiver == PeerID(0), case .control(.hello) = frame.payload {
+            return true
+        }
+        return false
     }
 
     private func sendAdvertisedRoutes(to peerID: PeerID, endpoint: TransportEndpoint) async throws {

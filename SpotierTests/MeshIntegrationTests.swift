@@ -566,6 +566,57 @@ final class MeshIntegrationTests: XCTestCase {
         XCTAssertEqual(received, PacketTunnelPacket(data: packet, protocolFamily: AF_INET))
     }
 
+    func testBroadcastDataFrameIsIgnored() async throws {
+        let transportA = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19152))
+        let transportB = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19153))
+        transportA.connect(to: transportB)
+        let engineA = MeshEngine(transport: transportA, deviceSeed: Data(repeating: 1, count: 32))
+        let engineB = MeshEngine(transport: transportB, deviceSeed: Data(repeating: 2, count: 32))
+        defer {
+            Task {
+                await engineA.stop()
+                await engineB.stop()
+            }
+        }
+
+        try await engineA.start(configuration: configuration(ipv4: "10.0.0.1/24", ipv6: "fd00:0:0:0:0:0:0:1"))
+        try await engineB.start(configuration: configuration(ipv4: "10.0.0.2/24", ipv6: "fd00:0:0:0:0:0:0:2"))
+        try await exchangeHello(from: engineA, transport: transportA, to: engineB, endpoint: transportB.endpoint)
+        try await exchangeHello(from: engineB, transport: transportB, to: engineA, endpoint: transportA.endpoint)
+        try await waitUntil(engineA.sessionEstablished(with: engineB), timeout: .milliseconds(500))
+        try await waitUntil(engineB.sessionEstablished(with: engineA), timeout: .milliseconds(500))
+
+        let identityA = try XCTUnwrap(engineA.localIdentity)
+        let identityB = try XCTUnwrap(engineB.localIdentity)
+        let crypto = try SessionCrypto.establish(
+            localIdentity: identityA,
+            handshake: HandshakeState(
+                network: NetworkSecret(networkName: "easytier", secret: "secret"),
+                localPeerID: identityA.peerID,
+                remotePeerID: identityB.peerID,
+                remotePublicKey: identityB.publicKey,
+                role: .initiator
+            )
+        )
+        let sequence: UInt64 = 9_001
+        let packet = ipv4Packet(source: [10, 0, 0, 1], destination: [10, 0, 0, 2])
+        let encrypted = try crypto.encrypt(sequence: sequence, plaintext: packet)
+        var outputB = engineB.outboundPackets.makeAsyncIterator()
+
+        try await transportA.send(CoreFrame(
+            type: .data,
+            sender: identityA.peerID,
+            receiver: PeerID(0),
+            sequence: sequence,
+            payload: .data(DataPacket(encryptedIPPacket: encrypted))
+        ), to: transportB.endpoint)
+
+        let received = await withTimeout(milliseconds: 200) {
+            await outputB.next()
+        }
+        XCTAssertNil(received)
+    }
+
     private func routeUpdatePayload(
         ipv4Address: String?,
         ipv6Address: String?,
