@@ -400,15 +400,16 @@
 - Modify: `Spotier.xcodeproj/project.pbxproj`
 - Modify: `.gitignore` if it only exists for Rust artifacts
 
-- [ ] Remove static library references.
-- [ ] Remove header search paths pointing at `EasyTierCore/include`.
-- [ ] Remove library search paths pointing at Rust build outputs.
-- [ ] Remove build phases that invoke Cargo.
-- [ ] Remove generated Rust artifacts from the project navigator.
-- [ ] Delete `EasyTierCore/`.
-- [ ] Run: `rg "EasyTierCore|Cargo|libeasytier|SwiftierCore|run_network_instance|set_tun_fd|free_string"`
-- [ ] Confirm the search returns no runtime references.
-- [ ] Commit.
+- [x] Remove static library references.
+- [x] Remove header search paths pointing at `EasyTierCore/include`.
+- [x] Remove library search paths pointing at Rust build outputs.
+- [x] Remove build phases that invoke Cargo.
+- [x] Remove generated Rust artifacts from the project navigator.
+- [ ] Delete `EasyTierCore/`. Deferred because `EasyTierCore/easytier-patched` contains pre-existing uncommitted changes.
+- [x] Run: `rg "EasyTierCore|Cargo|libeasytier|SwiftierCore|run_network_instance|set_tun_fd|free_string"`
+- [x] Confirm the search returns no runtime references.
+- [x] Build `Spotier` scheme for macOS without Rust linker inputs.
+- [x] Commit.
 
 ### Task 18: Add App Store Platform Entitlement Audit
 

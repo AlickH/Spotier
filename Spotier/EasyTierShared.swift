@@ -6,6 +6,7 @@ public let APP_BUNDLE_ID: String = "com.alick.spotier"
 public let APP_GROUP_ID: String = "group.com.alick.spotier"
 public let ICLOUD_CONTAINER_ID: String = "iCloud.com.alick.spotier"
 public let LOG_FILENAME: String = "easytier.log"
+public let LOG_FILE_TRIM_THRESHOLD_BYTES: UInt64 = 64 * 1024 * 1024
 
 public func appGroupDefaults() -> UserDefaults? {
     UserDefaults(suiteName: APP_GROUP_ID)

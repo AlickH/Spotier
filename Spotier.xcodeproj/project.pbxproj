@@ -720,7 +720,6 @@
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
-				HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/EasyTierCore/include/**";
 				INFOPLIST_FILE = SpotierNE/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = SpotierNE;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -729,14 +728,11 @@
 					"@executable_path/../Frameworks",
 					"@executable_path/../../../../Frameworks",
 				);
-				LIBRARY_SEARCH_PATHS = "$(PROJECT_DIR)/EasyTierCore/target/release";
+				LIBRARY_SEARCH_PATHS = "";
 				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				MARKETING_VERSION = 1.0.0;
 				"OBJC_BRIDGING_HEADER[sdk=macosx*]" = "SpotierNE/SpotierNE-Bridging-Header.h";
 				OTHER_LDFLAGS = (
-					"-leasytier_ios",
-					"-lc++",
-					"-lresolv",
 					"-framework",
 					SystemConfiguration,
 					"-framework",
@@ -780,7 +776,6 @@
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
-				HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/EasyTierCore/include/**";
 				INFOPLIST_FILE = SpotierNE/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = SpotierNE;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -789,13 +784,10 @@
 					"@executable_path/../Frameworks",
 					"@executable_path/../../../../Frameworks",
 				);
-				LIBRARY_SEARCH_PATHS = "$(PROJECT_DIR)/EasyTierCore/target/release";
+				LIBRARY_SEARCH_PATHS = "";
 				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				MARKETING_VERSION = 1.0.0;
 				OTHER_LDFLAGS = (
-					"-leasytier_ios",
-					"-lc++",
-					"-lresolv",
 					"-framework",
 					SystemConfiguration,
 					"-framework",
