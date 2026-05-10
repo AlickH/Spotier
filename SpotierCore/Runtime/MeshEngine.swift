@@ -58,6 +58,7 @@ final class MeshEngine {
                 self.transport = transport
             }
             startTransportReader()
+            try await sendBootstrapHello(to: configuration.peers)
             setStatus(.running)
         } catch {
             let message = String(describing: error)
@@ -130,6 +131,14 @@ final class MeshEngine {
             return try TransportEndpoint(urlString: listener).port
         }
         return nil
+    }
+
+    private func sendBootstrapHello(to peers: [String]) async throws {
+        guard let transport, let peerManager else { return }
+        for peer in peers {
+            let endpoint = try TransportEndpoint(urlString: peer)
+            try await transport.send(peerManager.makeHelloFrame(), to: endpoint)
+        }
     }
 
     private func setStatus(_ newStatus: MeshEngineStatus) {

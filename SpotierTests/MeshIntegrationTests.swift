@@ -55,6 +55,35 @@ final class MeshIntegrationTests: XCTestCase {
         XCTAssertEqual(receivedIPv6, PacketTunnelPacket(data: ipv6, protocolFamily: AF_INET6))
     }
 
+    func testConfiguredPeerReceivesBootstrapHelloOnStart() async throws {
+        let serverTransport = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19110))
+        let clientTransport = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19111))
+        clientTransport.connect(to: serverTransport)
+        let client = MeshEngine(transport: clientTransport)
+        var iterator = serverTransport.inboundFrames.makeAsyncIterator()
+
+        try await client.start(configuration: MeshEngineConfiguration(
+            networkName: "easytier",
+            networkSecret: "secret",
+            virtualIPv4: "10.10.0.1/24",
+            peers: ["udp://127.0.0.1:19110"],
+            listeners: ["udp://127.0.0.1:19111"]
+        ))
+        defer {
+            Task { await client.stop() }
+        }
+
+        let inbound = await withTimeout(milliseconds: 100) {
+            await iterator.next()
+        }
+
+        XCTAssertEqual(inbound?.remoteEndpoint, clientTransport.endpoint)
+        guard case .control(.hello) = inbound?.frame.payload else {
+            XCTFail("Expected bootstrap hello frame")
+            return
+        }
+    }
+
     private func configuration(ipv4: String, ipv6: String) -> MeshEngineConfiguration {
         MeshEngineConfiguration(
             networkName: "easytier",
