@@ -434,16 +434,16 @@
 - Create: `SpotierTests/TestDoubles/InMemoryTransport.swift`
 - Create: `SpotierTests/TestDoubles/FakePacketFlow.swift`
 
-- [ ] Create two `MeshEngine` instances in one test process.
-- [ ] Connect them with `InMemoryTransport`.
-- [ ] Exchange hello messages.
-- [ ] Establish encrypted session.
-- [ ] Install host routes.
-- [ ] Send one IPv4 packet from engine A to engine B.
-- [ ] Assert engine B emits the decrypted IP packet.
-- [ ] Send one IPv6 packet from engine B to engine A.
-- [ ] Assert engine A emits the decrypted IP packet.
-- [ ] Commit.
+- [x] Create two `MeshEngine` instances in one test process.
+- [x] Connect them with `InMemoryTransport`.
+- [x] Exchange hello messages.
+- [x] Establish encrypted session.
+- [x] Install host routes.
+- [x] Send one IPv4 packet from engine A to engine B.
+- [x] Assert engine B emits the decrypted IP packet.
+- [x] Send one IPv6 packet from engine B to engine A.
+- [x] Assert engine A emits the decrypted IP packet.
+- [x] Commit.
 
 ### Task 20: Build And Verification Commands
 
