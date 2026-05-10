@@ -7,6 +7,7 @@ UserInterfaceState.xcuserstate
 xcuserdata/
 DerivedData/
 build/
+.build/
 *.mode1v3
 *.mode2v3
 *.moved-aside

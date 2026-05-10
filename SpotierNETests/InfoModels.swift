@@ -1,0 +1,1 @@
+../SpotierNE/InfoModels.swift

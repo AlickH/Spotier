@@ -1,0 +1,223 @@
+import Foundation
+
+final class PeerManager {
+    private let localIdentity: NodeIdentity
+    private let network: NetworkSecret
+    private let staleTimeout: TimeInterval
+    private let udpHolePunchingEnabled: Bool
+    private let holePunchCoordinator = HolePunchCoordinator()
+    private var nextSequence: UInt64 = 1
+
+    private(set) var peerStore = PeerStore()
+    private(set) var sessions: [PeerID: PeerSession] = [:]
+
+    init(
+        localIdentity: NodeIdentity,
+        network: NetworkSecret,
+        staleTimeout: TimeInterval = 30,
+        udpHolePunchingEnabled: Bool = true
+    ) {
+        self.localIdentity = localIdentity
+        self.network = network
+        self.staleTimeout = staleTimeout
+        self.udpHolePunchingEnabled = udpHolePunchingEnabled
+    }
+
+    func makeHelloFrame() -> CoreFrame {
+        makeControlFrame(
+            receiver: PeerID(0),
+            payload: .hello(ControlMessage.Hello(
+                hostname: localIdentity.hostname,
+                virtualIPv4: localIdentity.virtualIPv4,
+                virtualIPv6: localIdentity.virtualIPv6,
+                publicKey: localIdentity.publicKey,
+                version: "swift-core"
+            ))
+        )
+    }
+
+    func receive(_ inbound: TransportInboundFrame, now: Date = Date()) throws -> [CoreFrame] {
+        guard case .control(let message) = inbound.frame.payload else {
+            return []
+        }
+
+        switch message {
+        case .hello(let hello):
+            return try receiveHello(
+                hello,
+                from: inbound.frame.sender,
+                endpoint: inbound.remoteEndpoint,
+                now: now
+            )
+        case .sessionOffer(let publicKey):
+            return try receiveSessionOffer(
+                publicKey,
+                from: inbound.frame.sender,
+                now: now
+            )
+        case .sessionAnswer(let publicKey):
+            try receiveSessionAnswer(publicKey, from: inbound.frame.sender, now: now)
+            return []
+        case .peerPing:
+            guard peerStore.peer(id: inbound.frame.sender) != nil else { return [] }
+            refreshPeer(inbound.frame.sender, now: now)
+            return [makeControlFrame(receiver: inbound.frame.sender, payload: .peerPong)]
+        case .peerPong:
+            refreshPeer(inbound.frame.sender, now: now)
+            return []
+        case .endpointCandidate(let endpoint):
+            try receiveEndpointCandidate(endpoint, from: inbound.frame.sender, now: now)
+            return []
+        case .relayRequest, .relayResponse:
+            refreshPeer(inbound.frame.sender, now: now)
+            return []
+        case .routeUpdate:
+            return []
+        }
+    }
+
+    func cleanupStalePeers(now: Date = Date()) -> [PeerID] {
+        let staleIDs = peerStore.markStale(now: now, timeout: staleTimeout)
+        for id in staleIDs {
+            sessions[id]?.markStale()
+        }
+
+        let removedIDs = peerStore.removeStalePeers()
+        for id in removedIDs {
+            sessions[id] = nil
+        }
+        return removedIDs
+    }
+
+    func session(for peerID: PeerID) -> PeerSession? {
+        sessions[peerID]
+    }
+
+    func publishEndpointCandidate(_ endpoint: TransportEndpoint, to peerID: PeerID) -> CoreFrame? {
+        guard udpHolePunchingEnabled else { return nil }
+        return holePunchCoordinator.publishLocalCandidate(
+            endpoint,
+            localPeerID: localIdentity.peerID,
+            remotePeerID: peerID
+        )
+    }
+
+    func confirmDirectTransport(peerID: PeerID, endpoint: TransportEndpoint) {
+        guard holePunchCoordinator.authenticateProbeResponse(from: peerID, endpoint: endpoint) else { return }
+        guard var session = sessions[peerID] else { return }
+        session.promoteDirectTransport()
+        sessions[peerID] = session
+    }
+
+    private func receiveHello(
+        _ hello: ControlMessage.Hello,
+        from peerID: PeerID,
+        endpoint: TransportEndpoint,
+        now: Date
+    ) throws -> [CoreFrame] {
+        let existingPeer = peerStore.peer(id: peerID)
+        var knownEndpoints = existingPeer?.knownEndpoints ?? []
+        knownEndpoints.insert(endpoint)
+        let peer = Peer(
+            id: peerID,
+            hostname: hello.hostname,
+            virtualIPv4: hello.virtualIPv4,
+            virtualIPv6: hello.virtualIPv6,
+            publicKey: hello.publicKey,
+            knownEndpoints: knownEndpoints,
+            version: hello.version,
+            lastSeen: now
+        )
+        peerStore.upsert(peer)
+
+        var responses = [CoreFrame]()
+        if sessions[peerID]?.health != .established {
+            sessions[peerID] = PeerSession(
+                peerID: peerID,
+                handshakeState: HandshakeState(
+                    network: network,
+                    localPeerID: localIdentity.peerID,
+                    remotePeerID: peerID,
+                    remotePublicKey: hello.publicKey,
+                    role: .responder
+                )
+            )
+            responses.append(makeControlFrame(receiver: peerID, payload: .sessionOffer(localIdentity.publicKey)))
+        }
+        if existingPeer == nil {
+            responses.append(makeHelloFrame())
+        }
+
+        return responses
+    }
+
+    private func receiveSessionOffer(
+        _ publicKey: Data,
+        from peerID: PeerID,
+        now: Date
+    ) throws -> [CoreFrame] {
+        peerStore.updatePeer(id: peerID) { peer in
+            peer.publicKey = publicKey
+            peer.lastSeen = now
+            peer.isStale = false
+        }
+
+        var session = PeerSession(
+            peerID: peerID,
+            handshakeState: HandshakeState(
+                network: network,
+                localPeerID: localIdentity.peerID,
+                remotePeerID: peerID,
+                remotePublicKey: publicKey,
+                role: .initiator
+            )
+        )
+        try session.establish(localIdentity: localIdentity)
+        sessions[peerID] = session
+
+        return [makeControlFrame(receiver: peerID, payload: .sessionAnswer(localIdentity.publicKey))]
+    }
+
+    private func receiveSessionAnswer(_ publicKey: Data, from peerID: PeerID, now: Date) throws {
+        peerStore.updatePeer(id: peerID) { peer in
+            peer.publicKey = publicKey
+            peer.lastSeen = now
+            peer.isStale = false
+        }
+
+        guard var session = sessions[peerID] else { return }
+        session.handshakeState.remotePublicKey = publicKey
+        try session.establish(localIdentity: localIdentity)
+        sessions[peerID] = session
+    }
+
+    private func refreshPeer(_ peerID: PeerID, now: Date) {
+        peerStore.updatePeer(id: peerID) { peer in
+            peer.lastSeen = now
+            peer.isStale = false
+        }
+    }
+
+    private func receiveEndpointCandidate(_ endpoint: String, from peerID: PeerID, now: Date) throws {
+        guard udpHolePunchingEnabled else { return }
+        let parsedEndpoint = try TransportEndpoint(urlString: endpoint)
+        _ = holePunchCoordinator.receiveRemoteCandidate(parsedEndpoint, from: peerID)
+        peerStore.updatePeer(id: peerID) { peer in
+            peer.knownEndpoints.insert(parsedEndpoint)
+            peer.lastSeen = now
+            peer.isStale = false
+        }
+    }
+
+    private func makeControlFrame(receiver: PeerID, payload: ControlMessage) -> CoreFrame {
+        let frame = CoreFrame(
+            type: .control,
+            sender: localIdentity.peerID,
+            receiver: receiver,
+            sequence: nextSequence,
+            payload: .control(payload)
+        )
+        nextSequence += 1
+        return frame
+    }
+}

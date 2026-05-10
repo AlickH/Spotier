@@ -1,0 +1,197 @@
+import Foundation
+
+struct CoreConfigHints: Equatable {
+    var ipv4: String?
+    var subnet: String?
+    var ipv6: String?
+    var ipv6Prefix: Int?
+    var mtu: Int?
+    var magicDNS = false
+    var magicDNSZone = "et.net"
+}
+
+struct CoreConfigParseResult: Equatable {
+    var configuration: MeshEngineConfiguration
+    var hints: CoreConfigHints
+}
+
+enum CoreConfigParserError: Error, Equatable {
+    case missingNetworkName
+    case missingNetworkSecret
+}
+
+enum CoreConfigParser {
+    static func parse(_ toml: String) throws -> CoreConfigParseResult {
+        var topLevel: [String: String] = [:]
+        var networkIdentity: [String: String] = [:]
+        var flags: [String: String] = [:]
+        var peers: [String] = []
+        var proxyNetworkCIDRs: [String] = []
+        var currentSection = ""
+
+        for rawLine in toml.components(separatedBy: .newlines) {
+            let trimmed = rawLine.trimmingCharacters(in: .whitespaces)
+            if trimmed.isEmpty || trimmed.hasPrefix("#") { continue }
+
+            if trimmed.hasPrefix("[[") && trimmed.hasSuffix("]]") {
+                currentSection = String(trimmed.dropFirst(2).dropLast(2))
+                continue
+            }
+
+            if trimmed.hasPrefix("[") && trimmed.hasSuffix("]") {
+                currentSection = String(trimmed.dropFirst().dropLast())
+                continue
+            }
+
+            let parts = trimmed.split(separator: "=", maxSplits: 1).map {
+                String($0).trimmingCharacters(in: .whitespaces)
+            }
+            guard parts.count == 2 else { continue }
+
+            let key = parts[0]
+            let value = unquote(parts[1])
+
+            switch currentSection {
+            case "":
+                topLevel[key] = value
+            case "network_identity":
+                networkIdentity[key] = value
+            case "flags":
+                flags[key] = value
+            case "peer":
+                if key == "uri" {
+                    peers.append(value)
+                }
+            case "proxy_network":
+                if key == "cidr" {
+                    proxyNetworkCIDRs.append(value)
+                }
+            default:
+                break
+            }
+        }
+
+        guard let networkName = networkIdentity["network_name"], !networkName.isEmpty else {
+            throw CoreConfigParserError.missingNetworkName
+        }
+
+        guard let networkSecret = networkIdentity["network_secret"] else {
+            throw CoreConfigParserError.missingNetworkSecret
+        }
+
+        let listeners = parseStringArray(topLevel["listeners"] ?? "")
+        let mappedListeners = parseStringArray(topLevel["mapped_listeners"] ?? "")
+        let advertisedRoutes = parseStringArray(topLevel["routes"] ?? "") + proxyNetworkCIDRs
+        let exitNodes = parseStringArray(topLevel["exit_nodes"] ?? "")
+        let mtu = Int(flags["mtu"] ?? topLevel["mtu"] ?? "") ?? 1380
+        let enableExitNode = boolValue(flags["enable_exit_node"] ?? topLevel["enable_exit_node"])
+        let disableIPv6 = boolValue(flags["disable_ipv6"] ?? topLevel["disable_ipv6"])
+        let disableP2P = boolValue(flags["disable_p2p"] ?? topLevel["disable_p2p"])
+        let p2pOnly = boolValue(flags["p2p_only"] ?? topLevel["p2p_only"])
+        let disableUDPHolePunching = boolValue(flags["disable_udp_hole_punching"] ?? topLevel["disable_udp_hole_punching"])
+        let hints = configHints(topLevel: topLevel, flags: flags, mtu: mtu, disableIPv6: disableIPv6)
+
+        let configuration = MeshEngineConfiguration(
+            networkName: networkName,
+            networkSecret: networkSecret,
+            instanceName: topLevel["instance_name"],
+            virtualIPv4: topLevel["ipv4"],
+            virtualIPv6: disableIPv6 ? nil : topLevel["ipv6"],
+            peers: peers,
+            listeners: listeners,
+            mappedListeners: mappedListeners,
+            advertisedRoutes: advertisedRoutes,
+            exitNodes: exitNodes,
+            enableExitNode: enableExitNode,
+            mtu: mtu,
+            disableP2P: disableP2P,
+            p2pOnly: p2pOnly,
+            disableUDPHolePunching: disableUDPHolePunching,
+            magicDNS: hints.magicDNS,
+            magicDNSZone: hints.magicDNSZone
+        )
+
+        try configuration.validate()
+        return CoreConfigParseResult(configuration: configuration, hints: hints)
+    }
+
+    private static func configHints(
+        topLevel: [String: String],
+        flags: [String: String],
+        mtu: Int,
+        disableIPv6: Bool
+    ) -> CoreConfigHints {
+        var hints = CoreConfigHints()
+        hints.mtu = mtu
+
+        if let ipv4 = topLevel["ipv4"] {
+            let cidrParts = ipv4.split(separator: "/")
+            if cidrParts.count == 2 {
+                hints.ipv4 = String(cidrParts[0])
+                if let cidr = Int(cidrParts[1]) {
+                    hints.subnet = cidrToSubnetMask(cidr)
+                }
+            }
+        }
+
+        if !disableIPv6,
+           let ipv6 = topLevel["ipv6"],
+           let parsed = parseIPv6CIDR(ipv6) {
+            hints.ipv6 = parsed.address
+            hints.ipv6Prefix = parsed.prefixLength
+        }
+
+        if ["enable_magic_dns", "accept_dns"].contains(where: { key in
+            (flags[key] ?? topLevel[key])?.lowercased() == "true"
+        }) {
+            hints.magicDNS = true
+        }
+
+        if let rawZone = flags["tld_dns_zone"] ?? topLevel["tld_dns_zone"] {
+            let zone = rawZone.trimmingCharacters(in: CharacterSet(charactersIn: "."))
+            if !zone.isEmpty {
+                hints.magicDNSZone = zone
+            }
+        }
+
+        return hints
+    }
+
+    private static func boolValue(_ value: String?) -> Bool {
+        value?.lowercased() == "true"
+    }
+
+    private static func unquote(_ value: String) -> String {
+        var result = value.trimmingCharacters(in: .whitespaces)
+        if result.hasPrefix("\""), result.hasSuffix("\"") {
+            result = String(result.dropFirst().dropLast())
+        }
+        return result
+    }
+
+    private static func parseStringArray(_ value: String) -> [String] {
+        guard value.hasPrefix("["), value.hasSuffix("]") else { return [] }
+        let inner = value.dropFirst().dropLast()
+        return inner
+            .split(separator: ",")
+            .map { unquote(String($0).trimmingCharacters(in: .whitespaces)) }
+            .filter { !$0.isEmpty }
+    }
+
+    private static func cidrToSubnetMask(_ cidr: Int) -> String? {
+        guard (0...32).contains(cidr) else { return nil }
+
+        let mask: UInt32 = cidr == 0 ? 0 : UInt32.max << (32 - cidr)
+        return "\((mask >> 24) & 0xFF).\((mask >> 16) & 0xFF).\((mask >> 8) & 0xFF).\(mask & 0xFF)"
+    }
+
+    private static func parseIPv6CIDR(_ cidr: String) -> (address: String, prefixLength: Int)? {
+        let parts = cidr.split(separator: "/")
+        guard parts.count == 2,
+              let prefixLength = Int(parts[1]),
+              (0...128).contains(prefixLength) else {
+            return nil
+        }
+        return (String(parts[0]), prefixLength)
+    }
+}
