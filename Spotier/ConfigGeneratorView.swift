@@ -23,7 +23,6 @@ struct ConfigGeneratorView: View {
                 Group {
                     switch screen {
                     case .advanced: advancedView
-                    case .portForwarding: portForwardingView
                     default: EmptyView()
                     }
                 }
@@ -87,24 +86,12 @@ struct ConfigGeneratorView: View {
 
             ConfigGeneratorMainForm(
                 model: $model,
-                onOpenAdvanced: { push(.advanced) },
-                onOpenPortForwarding: { push(.portForwarding) }
+                onOpenAdvanced: { push(.advanced) }
             )
         }
         .background(Color(nsColor: .windowBackgroundColor))
     }
-    
-    // MARK: - Port Forwarding (Image 1)
-    var portForwardingView: some View {
-        VStack(spacing: 0) {
-            header(title: LocalizedStringKey("端口转发"), leftBtn: LocalizedStringKey("返回"), leftRole: .cancel) { pop() }
 
-            ConfigGeneratorPortForwardingForm(model: $model)
-        }
-    }
-    
-    
-    
     // MARK: - Components
     
     private func header(title: LocalizedStringKey, leftBtn: LocalizedStringKey, leftRole: ButtonRole? = .cancel, rightBtn: LocalizedStringKey? = nil, leftAction: @escaping () -> Void, rightAction: (() -> Void)? = nil) -> some View {

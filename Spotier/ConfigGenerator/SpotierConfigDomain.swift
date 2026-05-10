@@ -142,8 +142,7 @@ enum PeerMode: String, CaseIterable, Identifiable {
     }
 }
 
-enum ConfigScreen {
+enum ConfigScreen: CaseIterable {
     case main
     case advanced
-    case portForwarding
 }

@@ -504,6 +504,7 @@
 - [x] Fail Swift core startup when configured peers exist but none use the UDP-backed Swift bootstrap path.
 - [x] Add a Swift Package entry point for `SpotierCore` covering iOS, tvOS, and macOS source-level builds.
 - [x] Align config generator listener examples with the UDP-only Swift transport path.
+- [x] Remove the new-config port forwarding UI entry because Swift core no longer generates `[[port_forward]]`.
 
 ## Explicitly Out Of Scope
 

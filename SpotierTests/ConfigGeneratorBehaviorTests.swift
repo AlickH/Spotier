@@ -61,4 +61,8 @@ final class ConfigGeneratorBehaviorTests: XCTestCase {
         XCTAssertTrue(ConfigGeneratorFormText.mappedListenerFooter.contains("udp://"))
         XCTAssertTrue(ConfigGeneratorFormText.mappedListenerPlaceholder.contains("udp://"))
     }
+
+    func testNewConfigNavigationOnlyExposesSwiftCoreGeneratedScreens() {
+        XCTAssertEqual(ConfigScreen.allCases, [.main, .advanced])
+    }
 }

@@ -406,7 +406,6 @@ struct ConfigGeneratorAdvancedForm: View {
 struct ConfigGeneratorMainForm: View {
     @Binding var model: SpotierConfigModel
     let onOpenAdvanced: () -> Void
-    let onOpenPortForwarding: () -> Void
 
     var body: some View {
         Form {
@@ -519,106 +518,6 @@ struct ConfigGeneratorMainForm: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-
-            Button(action: onOpenPortForwarding) {
-                HStack {
-                    Text(LocalizedStringKey("端口转发"))
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .foregroundColor(.secondary)
-                        .font(.caption)
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
         }
-    }
-}
-
-struct ConfigGeneratorPortForwardingForm: View {
-    @Binding var model: SpotierConfigModel
-
-    var body: some View {
-        Form {
-            ForEach($model.portForwards) { $rule in
-                Section {
-                    VStack(spacing: 12) {
-                        HStack {
-                            Text(LocalizedStringKey("协议"))
-                            Spacer()
-                            Picker("", selection: $rule.protocolType) {
-                                Text("TCP").tag("TCP")
-                                Text("UDP").tag("UDP")
-                            }
-                            .pickerStyle(.segmented)
-                            .frame(width: 120)
-                        }
-
-                        Divider()
-
-                        HStack {
-                            Text(LocalizedStringKey("绑定地址"))
-                            Spacer()
-                            ConfigGeneratorView.IPv4Field(ip: $rule.bindIp)
-                                .fixedSize()
-                            Text(":")
-                            TextField("0", text: $rule.bindPort)
-                                .frame(width: 50)
-                        }
-                        .textFieldStyle(.plain)
-                        .labelsHidden()
-
-                        HStack {
-                            Spacer()
-                            Image(systemName: "arrow.down")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Text(LocalizedStringKey("转发到"))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Spacer()
-                        }
-
-                        HStack {
-                            Text(LocalizedStringKey("目标地址"))
-                            Spacer()
-                            ConfigGeneratorView.IPv4Field(ip: $rule.targetIp)
-                                .fixedSize()
-                            Text(":")
-                            TextField("0", text: $rule.targetPort)
-                                .frame(width: 50)
-                        }
-                        .textFieldStyle(.plain)
-                        .labelsHidden()
-                    }
-                    .padding(.vertical, 4)
-                } header: {
-                    HStack {
-                        Spacer()
-                        Button("删除") {
-                            model.portForwards = ConfigGeneratorListBehavior.removing(rule.id, from: model.portForwards)
-                        }
-                        .font(.caption)
-                        .foregroundColor(.red)
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-
-            Section {
-                Button {
-                    model.portForwards = ConfigGeneratorListBehavior.appended(model.portForwards)
-                } label: {
-                    HStack {
-                        Image(systemName: "plus.circle.fill")
-                        Text(LocalizedStringKey("添加端口转发"))
-                    }
-                    .foregroundColor(.blue)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
     }
 }
