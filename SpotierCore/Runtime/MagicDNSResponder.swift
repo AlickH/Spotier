@@ -81,6 +81,8 @@ struct MagicDNSResponder {
         udpPayload[6] = UInt8(udpChecksum >> 8)
         udpPayload[7] = UInt8(udpChecksum & 0xFF)
         return ipv4Packet(
+            request: packet,
+            headerLength: headerLength,
             source: responseSource,
             destination: responseDestination,
             protocolNumber: 17,
@@ -103,6 +105,8 @@ struct MagicDNSResponder {
         icmpPayload[2] = UInt8(checksum >> 8)
         icmpPayload[3] = UInt8(checksum & 0xFF)
         return ipv4Packet(
+            request: packet,
+            headerLength: headerLength,
             source: resolverIPv4,
             destination: packet.ipv4String(at: 12),
             protocolNumber: 1,
@@ -182,19 +186,25 @@ struct MagicDNSResponder {
         return data
     }
 
-    private func ipv4Packet(source: String, destination: String, protocolNumber: UInt8, payload: Data) -> Data {
+    private func ipv4Packet(
+        request: Data,
+        headerLength: Int,
+        source: String,
+        destination: String,
+        protocolNumber: UInt8,
+        payload: Data
+    ) -> Data {
         let sourceBytes = ipv4Bytes(source)
         let destinationBytes = ipv4Bytes(destination)
-        let totalLength = UInt16(20 + payload.count)
-        var data = Data([
-            0x45, 0x00,
-            UInt8(totalLength >> 8), UInt8(totalLength & 0xFF),
-            0x00, 0x00, 0x00, 0x00,
-            64, protocolNumber,
-            0x00, 0x00
-        ])
-        data.append(contentsOf: sourceBytes)
-        data.append(contentsOf: destinationBytes)
+        let totalLength = UInt16(headerLength + payload.count)
+        var data = request.subdata(in: 0..<headerLength)
+        data[2] = UInt8(totalLength >> 8)
+        data[3] = UInt8(totalLength & 0xFF)
+        data[9] = protocolNumber
+        data[10] = 0
+        data[11] = 0
+        data.replaceSubrange(12..<16, with: sourceBytes)
+        data.replaceSubrange(16..<20, with: destinationBytes)
         let checksum = ipv4HeaderChecksum(data)
         data[10] = UInt8(checksum >> 8)
         data[11] = UInt8(checksum & 0xFF)

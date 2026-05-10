@@ -36,6 +36,27 @@ final class MagicDNSResponderTests: XCTestCase {
         XCTAssertEqual(response.suffix(4).map(Int.init), [10, 0, 0, 2])
     }
 
+    func testDNSResponsePreservesIPv4HeaderOptions() throws {
+        let responder = MagicDNSResponder(
+            resolverIPv4: "100.100.100.101",
+            zone: "et.net",
+            records: ["peer": "10.0.0.2"]
+        )
+
+        let response = try XCTUnwrap(responder.response(to: dnsQueryPacket(
+            name: "peer.et.net",
+            sourcePort: 53001,
+            options: [1, 1, 1, 1]
+        )))
+
+        XCTAssertEqual(response[0] & 0x0F, 6)
+        XCTAssertEqual(response[20..<24].map(Int.init), [1, 1, 1, 1])
+        XCTAssertEqual(ipv4HeaderChecksum(response), 0)
+        XCTAssertEqual(response[24], 0)
+        XCTAssertEqual(response[25], 53)
+        XCTAssertEqual(udpIPv4Checksum(packet: response), 0)
+    }
+
     func testIgnoresNamesOutsideConfiguredZone() {
         let responder = MagicDNSResponder(
             resolverIPv4: "100.100.100.101",
@@ -134,7 +155,12 @@ final class MagicDNSResponderTests: XCTestCase {
         XCTAssertEqual(internetChecksum(response.subdata(in: 20..<response.count)), 0)
     }
 
-    private func dnsQueryPacket(name: String, sourcePort: UInt16, queryType: UInt16 = 1) -> Data {
+    private func dnsQueryPacket(
+        name: String,
+        sourcePort: UInt16,
+        queryType: UInt16 = 1,
+        options: [UInt8] = []
+    ) -> Data {
         let dnsPayload = dnsQueryPayload(name: name, queryType: queryType)
         var udp = Data()
         udp.appendUInt16(sourcePort)
@@ -146,7 +172,8 @@ final class MagicDNSResponderTests: XCTestCase {
             source: [10, 0, 0, 9],
             destination: [100, 100, 100, 101],
             protocolNumber: 17,
-            payload: Array(udp)
+            payload: Array(udp),
+            options: options
         )
     }
 
@@ -173,11 +200,13 @@ final class MagicDNSResponderTests: XCTestCase {
         source: [UInt8],
         destination: [UInt8],
         protocolNumber: UInt8,
-        payload: [UInt8]
+        payload: [UInt8],
+        options: [UInt8] = []
     ) -> Data {
-        let totalLength = UInt16(20 + payload.count)
+        let headerLength = 20 + options.count
+        let totalLength = UInt16(headerLength + payload.count)
         var data = Data([
-            0x45, 0x00,
+            0x40 | UInt8(headerLength / 4), 0x00,
             UInt8(totalLength >> 8), UInt8(totalLength & 0xFF),
             0x00, 0x00, 0x00, 0x00,
             64, protocolNumber,
@@ -185,6 +214,7 @@ final class MagicDNSResponderTests: XCTestCase {
         ])
         data.append(contentsOf: source)
         data.append(contentsOf: destination)
+        data.append(contentsOf: options)
         data.append(contentsOf: payload)
         return data
     }
@@ -203,8 +233,9 @@ final class MagicDNSResponderTests: XCTestCase {
     }
 
     private func ipv4HeaderChecksum(_ packet: Data) -> UInt16 {
+        let headerLength = Int(packet[0] & 0x0F) * 4
         var sum: UInt32 = 0
-        for offset in stride(from: 0, to: 20, by: 2) {
+        for offset in stride(from: 0, to: headerLength, by: 2) {
             sum += UInt32(packet.readUInt16(at: offset))
         }
         while sum > 0xFFFF {
