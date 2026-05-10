@@ -54,6 +54,21 @@ final class RouteTableTests: XCTestCase {
         XCTAssertEqual(table.bestRoute(for: "192.168.1.10")?.ownerPeerID, PeerID(3))
     }
 
+    func testIPv6SubnetProxyRouteMatchesPrefix() {
+        var table = RouteTable()
+        table.apply(RouteUpdate(
+            peerID: PeerID(6),
+            ipv4Address: nil,
+            ipv6Address: nil,
+            nextHopPeerID: PeerID(6),
+            cost: 1,
+            proxyCIDRs: ["fd10:20:30:40::/64"]
+        ))
+
+        XCTAssertEqual(table.bestRoute(for: "fd10:20:30:40::1234")?.ownerPeerID, PeerID(6))
+        XCTAssertNil(table.bestRoute(for: "fd10:20:30:41::1234"))
+    }
+
     func testRouteRemovalWhenPeerIsRemoved() {
         var table = RouteTable()
         table.apply(RouteUpdate(
