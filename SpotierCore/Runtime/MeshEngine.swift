@@ -65,6 +65,7 @@ final class MeshEngine {
                 throw TransportError.unsupportedListenerScheme
             }
             startTransportReader()
+            try validateConfiguredPeers(configuration.peers)
             try await sendBootstrapHello(to: configuration.peers)
             setStatus(.running)
         } catch {
@@ -162,6 +163,13 @@ final class MeshEngine {
             return try TransportEndpoint(urlString: listener).port
         }
         return nil
+    }
+
+    private func validateConfiguredPeers(_ peers: [String]) throws {
+        guard !peers.isEmpty else { return }
+        guard peers.contains(where: { URL(string: $0)?.scheme == "udp" }) else {
+            throw TransportError.unsupportedPeerScheme
+        }
     }
 
     private func sendBootstrapHello(to peers: [String]) async throws {

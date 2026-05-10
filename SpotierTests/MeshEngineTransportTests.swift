@@ -63,6 +63,26 @@ final class MeshEngineTransportTests: XCTestCase {
         ])
     }
 
+    func testStartFailsWhenConfiguredPeersContainNoUDPPeer() async {
+        let transport = RecordingTransport()
+        let engine = MeshEngine(transport: transport)
+        let config = MeshEngineConfiguration(
+            networkName: "easytier",
+            networkSecret: "secret",
+            peers: ["tcp://relay.example.com:11010"],
+            listeners: ["udp://127.0.0.1:19094"]
+        )
+
+        do {
+            try await engine.start(configuration: config)
+            XCTFail("Expected unsupported peer failure")
+        } catch {
+            XCTAssertEqual(error as? TransportError, .unsupportedPeerScheme)
+            XCTAssertTrue(engine.events.contains(.fatalError("unsupportedPeerScheme")))
+            XCTAssertTrue(transport.sentEndpoints.isEmpty)
+        }
+    }
+
     func testStartFailsWhenListenersAreConfiguredButNoneAreUDP() async {
         let engine = MeshEngine()
         let config = MeshEngineConfiguration(
