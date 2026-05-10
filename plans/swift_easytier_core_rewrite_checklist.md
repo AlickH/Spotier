@@ -211,15 +211,16 @@
 - Create: `SpotierCore/Transport/UDPTransport.swift`
 - Test: `SpotierTests/UDPTransportTests.swift`
 
-- [ ] Define `Transport` with start, stop, send, and inbound frame stream.
-- [ ] Implement UDP using `NWConnection` and `NWListener`.
-- [ ] Bind to one local UDP listener configured by `MeshEngineConfiguration`.
-- [ ] Emit received datagrams as decoded `CoreFrame` plus remote endpoint.
-- [ ] Surface transport errors as `MeshEngineEvent.fatalError`.
-- [ ] Test endpoint parsing.
-- [ ] Test local UDP send/receive on loopback.
-- [ ] Test invalid frame does not crash the transport.
-- [ ] Commit.
+- [x] Define `Transport` with start, stop, send, and inbound frame stream.
+- [x] Implement UDP using `NWConnection` and `NWListener`.
+- [x] Bind to one local UDP listener configured by `MeshEngineConfiguration`.
+- [x] Emit received datagrams as decoded `CoreFrame` plus remote endpoint.
+- [x] Surface transport errors as `MeshEngineEvent.fatalError`.
+- [x] Test endpoint parsing.
+- [x] Test local UDP send/receive on loopback.
+- [x] Test invalid frame does not crash the transport.
+- [ ] Run UDP transport tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Commit.
 
 ### Task 8: Implement Relay Transport
 
