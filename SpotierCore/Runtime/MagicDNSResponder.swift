@@ -8,11 +8,13 @@ struct MagicDNSResponder {
     static func records(localIdentity: NodeIdentity?, peerStore: PeerStore) -> [String: String] {
         var records: [String: String] = [:]
         if let localIdentity,
-           let address = ipv4Address(from: localIdentity.virtualIPv4) {
+           let address = ipv4Address(from: localIdentity.virtualIPv4),
+           isValidRecordHostname(localIdentity.hostname) {
             records[localIdentity.hostname.lowercased()] = address
         }
         for peer in peerStore.peers {
-            if let address = ipv4Address(from: peer.virtualIPv4) {
+            if let address = ipv4Address(from: peer.virtualIPv4),
+               isValidRecordHostname(peer.hostname) {
                 records[peer.hostname.lowercased()] = address
             }
         }
@@ -174,6 +176,13 @@ struct MagicDNSResponder {
 
     private static func ipv4Address(from cidr: String?) -> String? {
         cidr?.split(separator: "/", maxSplits: 1).first.map(String.init)
+    }
+
+    private static func isValidRecordHostname(_ hostname: String) -> Bool {
+        !hostname.isEmpty
+            && !hostname.hasPrefix(".")
+            && !hostname.hasSuffix(".")
+            && !hostname.contains("..")
     }
 }
 

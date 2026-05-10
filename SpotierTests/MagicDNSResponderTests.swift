@@ -78,6 +78,33 @@ final class MagicDNSResponderTests: XCTestCase {
         XCTAssertEqual(response.readUInt16(at: 50), 1)
     }
 
+    func testRecordsSkipInvalidDNSHostnamesButKeepUnicodeHostnames() {
+        var store = PeerStore()
+        store.upsert(Peer(
+            id: PeerID(2),
+            hostname: ".invalid",
+            virtualIPv4: "10.0.0.2/24",
+            virtualIPv6: nil,
+            publicKey: Data(),
+            knownEndpoints: [],
+            lastSeen: Date()
+        ))
+        store.upsert(Peer(
+            id: PeerID(3),
+            hostname: "中文",
+            virtualIPv4: "10.0.0.3/24",
+            virtualIPv6: nil,
+            publicKey: Data(),
+            knownEndpoints: [],
+            lastSeen: Date()
+        ))
+
+        let records = MagicDNSResponder.records(localIdentity: nil, peerStore: store)
+
+        XCTAssertNil(records[".invalid"])
+        XCTAssertEqual(records["中文"], "10.0.0.3")
+    }
+
     private func dnsQueryPacket(name: String, sourcePort: UInt16, queryType: UInt16 = 1) -> Data {
         let dnsPayload = dnsQueryPayload(name: name, queryType: queryType)
         var udp = Data()
