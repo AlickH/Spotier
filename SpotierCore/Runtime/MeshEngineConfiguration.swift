@@ -32,10 +32,6 @@ struct MeshEngineConfiguration: Equatable {
             throw MeshEngineConfigurationError.emptyNetworkName
         }
 
-        guard !networkSecret.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw MeshEngineConfigurationError.emptyNetworkSecret
-        }
-
         guard (576...9000).contains(mtu) else {
             throw MeshEngineConfigurationError.invalidMTU(mtu)
         }
@@ -44,6 +40,5 @@ struct MeshEngineConfiguration: Equatable {
 
 enum MeshEngineConfigurationError: Error, Equatable {
     case emptyNetworkName
-    case emptyNetworkSecret
     case invalidMTU(Int)
 }

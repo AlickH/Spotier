@@ -4,16 +4,6 @@ import os
 
 let debounceInterval: TimeInterval = 0.5
 
-private struct ConfigHints {
-    var ipv4: String?
-    var subnet: String?
-    var ipv6: String?
-    var ipv6Prefix: Int?
-    var mtu: Int?
-    var magicDNS = false
-    var magicDNSZone = "et.net"
-}
-
 class PacketTunnelProvider: NEPacketTunnelProvider {
     
     // Hold a weak reference for C callback bridging
@@ -23,7 +13,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     private var lastAppliedSettings: SettingsSnapshot?
     private var needReapplySettings = false
     private var debounceTask: Task<Void, Never>?
-    private var configHints = ConfigHints()
+    private var configHints = CoreConfigHints()
 
     private let magicDNSResolver = "100.100.100.101"
     
@@ -43,51 +33,6 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             logger.error("读取配置文件失败: \(error.localizedDescription)")
             return nil
         }
-    }
-    
-    /// Parse ipv4 and mtu from TOML config for initial network settings
-    private func parseConfigHints(_ toml: String) {
-        var hints = ConfigHints()
-
-        for line in toml.components(separatedBy: .newlines) {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed.hasPrefix("#") { continue }
-            
-            let parts = trimmed.split(separator: "=", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
-            guard parts.count == 2 else { continue }
-            let key = parts[0]
-            let val = parts[1].replacingOccurrences(of: "\"", with: "")
-            
-            switch key {
-            case "ipv4":
-                // e.g. "10.126.126.1/24"
-                let cidrParts = val.split(separator: "/")
-                if cidrParts.count == 2 {
-                    hints.ipv4 = String(cidrParts[0])
-                    if let cidr = Int(cidrParts[1]) {
-                        hints.subnet = cidrToSubnetMask(cidr)
-                    }
-                }
-            case "ipv6":
-                if let parsed = parseIPv6CIDR(val) {
-                    hints.ipv6 = parsed.address
-                    hints.ipv6Prefix = parsed.prefixLength
-                }
-            case "mtu":
-                hints.mtu = Int(val)
-            case "enable_magic_dns", "accept_dns":
-                hints.magicDNS = val.lowercased() == "true"
-            case "tld_dns_zone":
-                let zone = val.trimmingCharacters(in: CharacterSet(charactersIn: "."))
-                if !zone.isEmpty {
-                    hints.magicDNSZone = zone
-                }
-            default:
-                break
-            }
-        }
-
-        configHints = hints
     }
     
     // MARK: - Running Info Callback
@@ -334,7 +279,13 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         }
         
         // 2. 解析配置中的 IPv4 和 MTU 信息
-        parseConfigHints(configToml)
+        do {
+            configHints = try CoreConfigParser.parse(configToml).hints
+        } catch {
+            logger.error("解析配置失败: \(error.localizedDescription)")
+            completionHandler(error)
+            return
+        }
         
         // 3. 初始化 Logger（从 App Group 读取用户设置的日志等级）
         let savedLevel: LogLevel = {

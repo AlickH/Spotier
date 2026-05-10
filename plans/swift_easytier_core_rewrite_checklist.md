@@ -129,17 +129,17 @@
 - Modify: `SpotierNE/PacketTunnelProvider.swift`
 - Test: `SpotierTests/CoreConfigParserTests.swift`
 
-- [ ] Move the config parsing currently embedded in `PacketTunnelProvider.parseConfigHints(_:)` into `CoreConfigParser`.
-- [ ] Parse only the TOML keys Spotier actually writes today.
-- [ ] Return `MeshEngineConfiguration` and `ConfigHints` from the same parse pass.
-- [ ] Remove duplicate string parsing from `PacketTunnelProvider`.
-- [ ] Test IPv4 CIDR parsing.
-- [ ] Test IPv6 CIDR parsing.
-- [ ] Test MTU parsing.
-- [ ] Test MagicDNS fields.
-- [ ] Test rejection of missing network identity.
-- [ ] Run parser tests.
-- [ ] Commit.
+- [x] Move the config parsing currently embedded in `PacketTunnelProvider.parseConfigHints(_:)` into `CoreConfigParser`.
+- [x] Parse only the TOML keys Spotier actually writes today.
+- [x] Return `MeshEngineConfiguration` and `ConfigHints` from the same parse pass.
+- [x] Remove duplicate string parsing from `PacketTunnelProvider`.
+- [x] Test IPv4 CIDR parsing.
+- [x] Test IPv6 CIDR parsing.
+- [x] Test MTU parsing.
+- [x] Test MagicDNS fields.
+- [x] Test rejection of missing network identity.
+- [ ] Run parser tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Commit.
 
 ### Task 4: Implement Stable Identity Types
 

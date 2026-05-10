@@ -30,12 +30,10 @@ final class MeshEngineConfigurationTests: XCTestCase {
         }
     }
 
-    func testRejectsEmptyNetworkSecret() {
+    func testAllowsEmptyNetworkSecretBecauseCurrentConfigTreatsItAsOptional() {
         let config = MeshEngineConfiguration(networkName: "easytier", networkSecret: "")
 
-        XCTAssertThrowsError(try config.validate()) { error in
-            XCTAssertEqual(error as? MeshEngineConfigurationError, .emptyNetworkSecret)
-        }
+        XCTAssertNoThrow(try config.validate())
     }
 
     func testRejectsInvalidMTU() {
