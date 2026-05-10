@@ -88,7 +88,7 @@ struct MagicDNSResponder {
         data.appendUInt16(0xC00C)
         data.appendUInt16(1)
         data.appendUInt16(1)
-        data.appendUInt32(30)
+        data.appendUInt32(1)
         data.appendUInt16(4)
         data.append(contentsOf: address.split(separator: ".").compactMap { UInt8($0) })
         return data

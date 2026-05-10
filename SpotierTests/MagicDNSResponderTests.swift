@@ -29,6 +29,8 @@ final class MagicDNSResponderTests: XCTestCase {
         XCTAssertEqual(response[21], 53)
         XCTAssertEqual(response[22], 207)
         XCTAssertEqual(response[23], 9)
+        let answerOffset = 28 + 12 + dnsQuestionLength(name: "peer.et.net")
+        XCTAssertEqual(response.readUInt32(at: answerOffset + 6), 1)
         XCTAssertEqual(response.suffix(4).map(Int.init), [10, 0, 0, 2])
     }
 
@@ -105,6 +107,12 @@ final class MagicDNSResponderTests: XCTestCase {
         return data
     }
 
+    private func dnsQuestionLength(name: String) -> Int {
+        name.split(separator: ".").reduce(1 + 4) { length, label in
+            length + 1 + label.utf8.count
+        }
+    }
+
     private func ipv4Packet(
         source: [UInt8],
         destination: [UInt8],
@@ -145,5 +153,12 @@ private extension Data {
 
     func readUInt16(at offset: Int) -> UInt16 {
         (UInt16(self[offset]) << 8) | UInt16(self[offset + 1])
+    }
+
+    func readUInt32(at offset: Int) -> UInt32 {
+        (UInt32(self[offset]) << 24)
+            | (UInt32(self[offset + 1]) << 16)
+            | (UInt32(self[offset + 2]) << 8)
+            | UInt32(self[offset + 3])
     }
 }
