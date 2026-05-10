@@ -160,6 +160,11 @@ final class MeshEngine {
             case .control:
                 let responses = try peerManager?.receive(inbound) ?? []
                 syncPeerState()
+                if case .control(.routeUpdate(let payload)) = inbound.frame.payload {
+                    let update = try RouteUpdate(wireData: payload, sender: inbound.frame.sender)
+                    routeTable.apply(update)
+                    events.append(.routeChanged)
+                }
                 if case .control(.hello) = inbound.frame.payload,
                    let peer = peerStore.peer(id: inbound.frame.sender) {
                     RouteCalculator.apply(peer: peer, to: &routeTable)

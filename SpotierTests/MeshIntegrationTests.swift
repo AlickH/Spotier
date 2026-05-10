@@ -121,6 +121,75 @@ final class MeshIntegrationTests: XCTestCase {
         XCTAssertEqual(receivedIPv4, PacketTunnelPacket(data: ipv4, protocolFamily: AF_INET))
     }
 
+    func testRouteUpdateInstallsSubnetProxyRoute() async throws {
+        let transportA = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19130))
+        let transportB = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19131))
+        transportA.connect(to: transportB)
+        let engineA = MeshEngine(transport: transportA, deviceSeed: Data(repeating: 1, count: 32))
+        let engineB = MeshEngine(transport: transportB, deviceSeed: Data(repeating: 2, count: 32))
+        defer {
+            Task {
+                await engineA.stop()
+                await engineB.stop()
+            }
+        }
+
+        try await engineA.start(configuration: configuration(ipv4: "10.0.0.1/24", ipv6: "fd00:0:0:0:0:0:0:1"))
+        try await engineB.start(configuration: configuration(ipv4: "10.0.0.2/24", ipv6: "fd00:0:0:0:0:0:0:2"))
+        try await exchangeHello(from: engineB, transport: transportB, to: engineA, endpoint: transportA.endpoint)
+        let updatePayload = routeUpdatePayload(
+            ipv4Address: "10.0.0.2",
+            ipv6Address: nil,
+            cost: 2,
+            proxyCIDRs: ["192.168.77.0/24"]
+        )
+        try await transportB.send(CoreFrame(
+            type: .control,
+            sender: try XCTUnwrap(engineB.localIdentity?.peerID),
+            receiver: try XCTUnwrap(engineA.localIdentity?.peerID),
+            sequence: 50,
+            payload: .control(.routeUpdate(updatePayload))
+        ), to: transportA.endpoint)
+
+        try await waitUntil(engineA.routeTable.bestRoute(for: "192.168.77.9") != nil, timeout: .milliseconds(500))
+
+        XCTAssertEqual(engineA.routeTable.bestRoute(for: "192.168.77.9")?.ownerPeerID, engineB.localIdentity?.peerID)
+        XCTAssertEqual(engineA.routeTable.bestRoute(for: "192.168.77.9")?.cost, 2)
+    }
+
+    private func routeUpdatePayload(
+        ipv4Address: String?,
+        ipv6Address: String?,
+        cost: Int,
+        proxyCIDRs: [String]
+    ) -> Data {
+        var data = Data()
+        appendOptionalString(ipv4Address, to: &data)
+        appendOptionalString(ipv6Address, to: &data)
+        data.append(UInt8(cost))
+        data.append(UInt8(proxyCIDRs.count))
+        for cidr in proxyCIDRs {
+            appendString(cidr, to: &data)
+        }
+        return data
+    }
+
+    private func appendOptionalString(_ value: String?, to data: inout Data) {
+        guard let value else {
+            data.append(0)
+            return
+        }
+        data.append(1)
+        appendString(value, to: &data)
+    }
+
+    private func appendString(_ value: String, to data: inout Data) {
+        let bytes = Data(value.utf8)
+        data.append(UInt8((bytes.count >> 8) & 0xFF))
+        data.append(UInt8(bytes.count & 0xFF))
+        data.append(bytes)
+    }
+
     private func configuration(ipv4: String, ipv6: String) -> MeshEngineConfiguration {
         MeshEngineConfiguration(
             networkName: "easytier",
