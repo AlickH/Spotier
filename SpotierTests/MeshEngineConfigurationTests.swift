@@ -2,15 +2,14 @@ import XCTest
 @testable import Spotier
 
 final class MeshEngineConfigurationTests: XCTestCase {
-    func testAcceptsCurrentSpotierConfigurationFields() throws {
+    func testAcceptsCurrentSwiftCoreConfigurationFields() throws {
         let config = MeshEngineConfiguration(
             networkName: "easytier",
             networkSecret: "secret",
             virtualIPv4: "10.126.126.4/24",
             virtualIPv6: "fd00::4/64",
-            peers: ["tcp://public.easytier.top:11010"],
+            peers: ["udp://192.0.2.10:11010"],
             listeners: [
-                "tcp://0.0.0.0:11010",
                 "udp://0.0.0.0:11010",
                 "wg://0.0.0.0:11011"
             ],
