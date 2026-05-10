@@ -270,15 +270,16 @@
 - Create: `SpotierCore/Routing/RouteCalculator.swift`
 - Test: `SpotierTests/RouteTableTests.swift`
 
-- [ ] Define host routes for peer virtual IPv4 and IPv6 addresses.
-- [ ] Define subnet proxy routes with owner peer ID and route cost.
-- [ ] Implement route update control message application.
-- [ ] Implement best-route selection by lowest cost, then newest update.
-- [ ] Do not implement multiple routing algorithms.
-- [ ] Test direct peer host route.
-- [ ] Test subnet route selection.
-- [ ] Test route removal when peer is removed.
-- [ ] Commit.
+- [x] Define host routes for peer virtual IPv4 and IPv6 addresses.
+- [x] Define subnet proxy routes with owner peer ID and route cost.
+- [x] Implement route update control message application.
+- [x] Implement best-route selection by lowest cost, then newest update.
+- [x] Do not implement multiple routing algorithms.
+- [x] Test direct peer host route.
+- [x] Test subnet route selection.
+- [x] Test route removal when peer is removed.
+- [ ] Run route table tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Commit.
 
 ### Task 11: Implement IP Packet Classification
 
