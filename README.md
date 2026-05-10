@@ -29,7 +29,7 @@ Join our public beta via TestFlight:
 ### Key Features
 
 - ✨ **Native macOS Experience**: Designed with modern SwiftUI components, dark mode support, and smooth animations following the latest macOS guidelines.
-- 🤖 **Background Service**: Utilizes a privileged Helper tool to run the VPN core in the background, ensuring your connection stays alive even when the main app is closed.
+- 🤖 **Background Service**: Uses Apple's Network Extension runtime and Connect On Demand support to keep the tunnel managed by the system.
 - 🛠 **Visual Configuration**: A comprehensive editor to generate and modify EasyTier configurations without touching text files.
 - 📊 **Real-time Monitoring**: Visualize peer connections, latency, and traffic statistics instantly with a beautiful UI.
 - 📝 **Activity Timeline**: A dual-mode log viewer that separates high-level "Interaction Events" (peer join/leave) from low-level debugging logs.
@@ -92,7 +92,7 @@ Distributed under the **MIT License**.
 ### 主要功能
 
 - ✨ **原生体验**：遵循 macOS 最新设计规范，原生支持深色模式，拥有流畅的动画和细腻的交互。
-- 🤖 **后台服务**：内置特权辅助程序（Helper），支持将 VPN 核心作为系统服务在后台运行，主界面关闭后网络依然保持连通。
+- 🤖 **后台服务**：使用 Apple Network Extension 运行时和 Connect On Demand，让系统负责 VPN 隧道生命周期。
 - 🛠 **可视化配置**：提供完整的图形化配置编辑器，无需手动编辑 `.toml` 配置文件即可完成所有设置。
 - 📊 **实时监控**：直观展示节点列表、P2P 连接状态、延迟和实时流量统计，并配有可视化拓朴指示。
 - 📝 **活动时间轴**：独创的双模式日志视图，通过“交互事件”时间轴清晰展示节点加入、断开等关键动态，同时保留详细的调试日志。

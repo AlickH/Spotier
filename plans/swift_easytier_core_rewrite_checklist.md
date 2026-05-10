@@ -418,13 +418,14 @@
 - Modify: app and extension entitlement files if present
 - Modify: `Spotier.xcodeproj/project.pbxproj`
 
-- [ ] Confirm macOS app target has Packet Tunnel entitlement.
-- [ ] Confirm iOS app target has Packet Tunnel entitlement if the target exists.
-- [ ] Confirm tvOS app target has Packet Tunnel entitlement if the target exists.
-- [ ] Confirm app and extension share the same App Group.
-- [ ] Confirm no privileged helper entitlement remains.
-- [ ] Confirm VPN privacy text and data collection notes are documented.
-- [ ] Commit.
+- [x] Confirm macOS app target has Packet Tunnel entitlement.
+- [x] Confirm iOS app target has Packet Tunnel entitlement if the target exists.
+- [x] Confirm tvOS app target has Packet Tunnel entitlement if the target exists.
+- [x] Confirm app and extension share the same App Group.
+- [x] Confirm no privileged helper entitlement remains.
+- [x] Confirm VPN privacy text and data collection notes are documented.
+- [x] Build `Spotier` scheme for macOS.
+- [x] Commit.
 
 ### Task 19: Add End-To-End Local Mesh Test Harness
 

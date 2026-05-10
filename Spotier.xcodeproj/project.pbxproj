@@ -39,16 +39,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		E0933E002F16A42100C7DE59 /* Copy Helper Executable */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 6;
-			files = (
-			);
-			name = "Copy Helper Executable";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		E0AB5CD82F3CCD9C00BD8CBA /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -58,15 +48,6 @@
 				E0AB5CD32F3CCD9C00BD8CBA /* SpotierNE.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		E0AC7ED12F19208200FC425C /* CopyFiles */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = Contents/Library/LaunchDaemons;
-			dstSubfolderSpec = 1;
-			files = (
-			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -212,8 +193,6 @@
 				E0933DC82F16A25B00C7DE59 /* Sources */,
 				E0933DC92F16A25B00C7DE59 /* Frameworks */,
 				E0933DCA2F16A25B00C7DE59 /* Resources */,
-				E0933E002F16A42100C7DE59 /* Copy Helper Executable */,
-				E0AC7ED12F19208200FC425C /* CopyFiles */,
 				E0AB5CD82F3CCD9C00BD8CBA /* Embed Foundation Extensions */,
 			);
 			buildRules = (
