@@ -2,12 +2,12 @@ import XCTest
 @testable import Spotier
 
 final class CoreConfigParserTests: XCTestCase {
-    func testParsesCurrentGeneratedConfigShape() throws {
+    func testParsesCurrentSwiftCoreConfigShape() throws {
         let result = try CoreConfigParser.parse("""
         instance_name = "Mac"
         instance_id = "abc"
         dhcp = false
-        listeners = ["tcp://0.0.0.0:11010", "udp://0.0.0.0:11010"]
+        listeners = ["udp://0.0.0.0:11010"]
         mapped_listeners = ["udp://198.51.100.9:21010"]
         ipv4 = "10.126.126.4/24"
         routes = ["192.168.50.0/24", "10.88.0.0/16"]
@@ -18,7 +18,7 @@ final class CoreConfigParserTests: XCTestCase {
         network_secret = "secret"
 
         [[peer]]
-        uri = "tcp://public.easytier.top:11010"
+        uri = "udp://192.0.2.10:11010"
 
         [flags]
         mtu = 1380
@@ -30,11 +30,8 @@ final class CoreConfigParserTests: XCTestCase {
         XCTAssertEqual(result.configuration.networkSecret, "secret")
         XCTAssertEqual(result.configuration.instanceName, "Mac")
         XCTAssertEqual(result.configuration.virtualIPv4, "10.126.126.4/24")
-        XCTAssertEqual(result.configuration.peers, ["tcp://public.easytier.top:11010"])
-        XCTAssertEqual(result.configuration.listeners, [
-            "tcp://0.0.0.0:11010",
-            "udp://0.0.0.0:11010"
-        ])
+        XCTAssertEqual(result.configuration.peers, ["udp://192.0.2.10:11010"])
+        XCTAssertEqual(result.configuration.listeners, ["udp://0.0.0.0:11010"])
         XCTAssertEqual(result.configuration.mappedListeners, ["udp://198.51.100.9:21010"])
         XCTAssertEqual(result.configuration.mtu, 1380)
         XCTAssertEqual(result.configuration.advertisedRoutes, ["192.168.50.0/24", "10.88.0.0/16"])

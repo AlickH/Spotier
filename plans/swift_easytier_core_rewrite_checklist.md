@@ -498,6 +498,7 @@
 - [x] Skip non-UDP bootstrap peers in the UDP-only Swift transport path instead of silently sending UDP to TCP URLs.
 - [x] Generate new default configs in standalone Swift-core mode without EasyTier public server peers.
 - [x] Hide unsupported EasyTier public server mode from the Swift-core config generator.
+- [x] Align core config parser fixtures with Swift-core UDP bootstrap examples instead of EasyTier public server examples.
 - [x] Add a Swift Package entry point for `SpotierCore` covering iOS, tvOS, and macOS source-level builds.
 
 ## Explicitly Out Of Scope
