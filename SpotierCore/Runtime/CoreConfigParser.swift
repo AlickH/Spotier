@@ -78,6 +78,8 @@ enum CoreConfigParser {
         let advertisedRoutes = parseStringArray(topLevel["routes"] ?? "")
         let mtu = Int(flags["mtu"] ?? topLevel["mtu"] ?? "") ?? 1380
         let disableIPv6 = boolValue(flags["disable_ipv6"] ?? topLevel["disable_ipv6"])
+        let disableP2P = boolValue(flags["disable_p2p"] ?? topLevel["disable_p2p"])
+        let disableUDPHolePunching = boolValue(flags["disable_udp_hole_punching"] ?? topLevel["disable_udp_hole_punching"])
         let hints = configHints(topLevel: topLevel, flags: flags, mtu: mtu, disableIPv6: disableIPv6)
 
         let configuration = MeshEngineConfiguration(
@@ -88,7 +90,9 @@ enum CoreConfigParser {
             peers: peers,
             listeners: listeners,
             advertisedRoutes: advertisedRoutes,
-            mtu: mtu
+            mtu: mtu,
+            disableP2P: disableP2P,
+            disableUDPHolePunching: disableUDPHolePunching
         )
 
         try configuration.validate()

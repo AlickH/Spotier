@@ -69,6 +69,21 @@ final class CoreConfigParserTests: XCTestCase {
         XCTAssertNil(result.hints.ipv6Prefix)
     }
 
+    func testParsesP2PDisableFlags() throws {
+        let result = try CoreConfigParser.parse("""
+        [network_identity]
+        network_name = "easytier"
+        network_secret = "secret"
+
+        [flags]
+        disable_p2p = true
+        disable_udp_hole_punching = true
+        """)
+
+        XCTAssertTrue(result.configuration.disableP2P)
+        XCTAssertTrue(result.configuration.disableUDPHolePunching)
+    }
+
     func testDefaultsMTUTo1380() throws {
         let result = try CoreConfigParser.parse("""
         [network_identity]

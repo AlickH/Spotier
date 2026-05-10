@@ -4,6 +4,7 @@ final class PeerManager {
     private let localIdentity: NodeIdentity
     private let network: NetworkSecret
     private let staleTimeout: TimeInterval
+    private let udpHolePunchingEnabled: Bool
     private let holePunchCoordinator = HolePunchCoordinator()
     private var nextSequence: UInt64 = 1
 
@@ -13,11 +14,13 @@ final class PeerManager {
     init(
         localIdentity: NodeIdentity,
         network: NetworkSecret,
-        staleTimeout: TimeInterval = 30
+        staleTimeout: TimeInterval = 30,
+        udpHolePunchingEnabled: Bool = true
     ) {
         self.localIdentity = localIdentity
         self.network = network
         self.staleTimeout = staleTimeout
+        self.udpHolePunchingEnabled = udpHolePunchingEnabled
     }
 
     func makeHelloFrame() -> CoreFrame {
@@ -86,8 +89,9 @@ final class PeerManager {
         sessions[peerID]
     }
 
-    func publishEndpointCandidate(_ endpoint: TransportEndpoint, to peerID: PeerID) -> CoreFrame {
-        holePunchCoordinator.publishLocalCandidate(
+    func publishEndpointCandidate(_ endpoint: TransportEndpoint, to peerID: PeerID) -> CoreFrame? {
+        guard udpHolePunchingEnabled else { return nil }
+        return holePunchCoordinator.publishLocalCandidate(
             endpoint,
             localPeerID: localIdentity.peerID,
             remotePeerID: peerID
@@ -190,6 +194,7 @@ final class PeerManager {
     }
 
     private func receiveEndpointCandidate(_ endpoint: String, from peerID: PeerID, now: Date) throws {
+        guard udpHolePunchingEnabled else { return }
         let parsedEndpoint = try TransportEndpoint(urlString: endpoint)
         _ = holePunchCoordinator.receiveRemoteCandidate(parsedEndpoint, from: peerID)
         peerStore.updatePeer(id: peerID) { peer in

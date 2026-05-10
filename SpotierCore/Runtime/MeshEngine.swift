@@ -46,7 +46,8 @@ final class MeshEngine {
             network: NetworkSecret(
                 networkName: configuration.networkName,
                 secret: configuration.networkSecret
-            )
+            ),
+            udpHolePunchingEnabled: !configuration.disableP2P && !configuration.disableUDPHolePunching
         )
 
         do {

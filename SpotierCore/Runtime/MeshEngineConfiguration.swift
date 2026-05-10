@@ -9,6 +9,8 @@ struct MeshEngineConfiguration: Equatable {
     var listeners: [String]
     var advertisedRoutes: [String]
     var mtu: Int
+    var disableP2P: Bool
+    var disableUDPHolePunching: Bool
 
     init(
         networkName: String,
@@ -18,7 +20,9 @@ struct MeshEngineConfiguration: Equatable {
         peers: [String] = [],
         listeners: [String] = [],
         advertisedRoutes: [String] = [],
-        mtu: Int = 1380
+        mtu: Int = 1380,
+        disableP2P: Bool = false,
+        disableUDPHolePunching: Bool = false
     ) {
         self.networkName = networkName
         self.networkSecret = networkSecret
@@ -28,6 +32,8 @@ struct MeshEngineConfiguration: Equatable {
         self.listeners = listeners
         self.advertisedRoutes = advertisedRoutes
         self.mtu = mtu
+        self.disableP2P = disableP2P
+        self.disableUDPHolePunching = disableUDPHolePunching
     }
 
     func validate() throws {

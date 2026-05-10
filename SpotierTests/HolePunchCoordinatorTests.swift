@@ -43,12 +43,32 @@ final class HolePunchCoordinatorTests: XCTestCase {
             remoteEndpoint: TransportEndpoint(host: "127.0.0.1", port: 11010)
         ))
         let outgoingCandidate = manager.publishEndpointCandidate(endpoint, to: remote.peerID)
-        XCTAssertEqual(outgoingCandidate.payload, .control(.endpointCandidate("udp://203.0.113.9:11010")))
+        XCTAssertEqual(outgoingCandidate?.payload, .control(.endpointCandidate("udp://203.0.113.9:11010")))
 
         let candidate = endpointCandidateFrame(from: remote.peerID, to: local.peerID, endpoint: endpoint)
         _ = try manager.receive(TransportInboundFrame(frame: candidate, remoteEndpoint: endpoint))
 
         XCTAssertTrue(manager.peerStore.peer(id: remote.peerID)?.knownEndpoints.contains(endpoint) == true)
+    }
+
+    func testDisabledUDPHolePunchingDoesNotPublishOrAcceptCandidates() throws {
+        let network = NetworkSecret(networkName: "easytier", secret: "secret")
+        let local = try identity(seedByte: 1, network: network)
+        let remote = try identity(seedByte: 2, network: network)
+        let manager = PeerManager(localIdentity: local, network: network, udpHolePunchingEnabled: false)
+        let endpoint = TransportEndpoint(host: "203.0.113.9", port: 11010)
+
+        _ = try manager.receive(TransportInboundFrame(
+            frame: helloFrame(from: remote),
+            remoteEndpoint: TransportEndpoint(host: "127.0.0.1", port: 11010)
+        ))
+
+        XCTAssertNil(manager.publishEndpointCandidate(endpoint, to: remote.peerID))
+
+        let candidate = endpointCandidateFrame(from: remote.peerID, to: local.peerID, endpoint: endpoint)
+        _ = try manager.receive(TransportInboundFrame(frame: candidate, remoteEndpoint: endpoint))
+
+        XCTAssertFalse(manager.peerStore.peer(id: remote.peerID)?.knownEndpoints.contains(endpoint) == true)
     }
 
     func testDirectTransportPromotionAfterAuthenticatedProbe() throws {
