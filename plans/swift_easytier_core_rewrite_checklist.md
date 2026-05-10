@@ -348,16 +348,17 @@
 - Modify: `SpotierCore/Mesh/PeerManager.swift`
 - Test: `SpotierTests/HolePunchCoordinatorTests.swift`
 
-- [ ] Implement STUN binding request and response parsing.
-- [ ] Discover public UDP endpoint from configured STUN server.
-- [ ] Publish endpoint candidates through control messages.
-- [ ] Coordinate simultaneous UDP probes with peer endpoint candidates.
-- [ ] Promote direct UDP transport only after authenticated peer response.
-- [ ] Keep relay transport active as an explicit route until direct transport is confirmed.
-- [ ] Test STUN response parsing using fixture bytes.
-- [ ] Test endpoint candidate exchange.
-- [ ] Test direct transport promotion.
-- [ ] Commit.
+- [x] Implement STUN binding request and response parsing.
+- [x] Discover public UDP endpoint from configured STUN server.
+- [x] Publish endpoint candidates through control messages.
+- [x] Coordinate simultaneous UDP probes with peer endpoint candidates.
+- [x] Promote direct UDP transport only after authenticated peer response.
+- [x] Keep relay transport active as an explicit route until direct transport is confirmed.
+- [x] Test STUN response parsing using fixture bytes.
+- [x] Test endpoint candidate exchange.
+- [x] Test direct transport promotion.
+- [ ] Run hole punch coordinator tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Commit.
 
 ### Task 15: Implement Relay Server Compatibility Contract
 

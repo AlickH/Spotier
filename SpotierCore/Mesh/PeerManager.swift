@@ -4,6 +4,7 @@ final class PeerManager {
     private let localIdentity: NodeIdentity
     private let network: NetworkSecret
     private let staleTimeout: TimeInterval
+    private let holePunchCoordinator = HolePunchCoordinator()
     private var nextSequence: UInt64 = 1
 
     private(set) var peerStore = PeerStore()
@@ -59,7 +60,10 @@ final class PeerManager {
         case .peerPong:
             refreshPeer(inbound.frame.sender, now: now)
             return []
-        case .relayRequest, .relayResponse, .routeUpdate, .endpointCandidate:
+        case .endpointCandidate(let endpoint):
+            try receiveEndpointCandidate(endpoint, from: inbound.frame.sender, now: now)
+            return []
+        case .relayRequest, .relayResponse, .routeUpdate:
             refreshPeer(inbound.frame.sender, now: now)
             return []
         }
@@ -80,6 +84,21 @@ final class PeerManager {
 
     func session(for peerID: PeerID) -> PeerSession? {
         sessions[peerID]
+    }
+
+    func publishEndpointCandidate(_ endpoint: TransportEndpoint, to peerID: PeerID) -> CoreFrame {
+        holePunchCoordinator.publishLocalCandidate(
+            endpoint,
+            localPeerID: localIdentity.peerID,
+            remotePeerID: peerID
+        )
+    }
+
+    func confirmDirectTransport(peerID: PeerID, endpoint: TransportEndpoint) {
+        guard holePunchCoordinator.authenticateProbeResponse(from: peerID, endpoint: endpoint) else { return }
+        guard var session = sessions[peerID] else { return }
+        session.promoteDirectTransport()
+        sessions[peerID] = session
     }
 
     private func receiveHello(
@@ -155,6 +174,16 @@ final class PeerManager {
 
     private func refreshPeer(_ peerID: PeerID, now: Date) {
         peerStore.updatePeer(id: peerID) { peer in
+            peer.lastSeen = now
+            peer.isStale = false
+        }
+    }
+
+    private func receiveEndpointCandidate(_ endpoint: String, from peerID: PeerID, now: Date) throws {
+        let parsedEndpoint = try TransportEndpoint(urlString: endpoint)
+        _ = holePunchCoordinator.receiveRemoteCandidate(parsedEndpoint, from: peerID)
+        peerStore.updatePeer(id: peerID) { peer in
+            peer.knownEndpoints.insert(parsedEndpoint)
             peer.lastSeen = now
             peer.isStale = false
         }

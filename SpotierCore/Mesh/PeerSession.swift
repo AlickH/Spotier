@@ -43,4 +43,8 @@ struct PeerSession {
     mutating func markStale() {
         health = .stale
     }
+
+    mutating func promoteDirectTransport() {
+        transportPreference = .direct
+    }
 }
