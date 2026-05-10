@@ -18,6 +18,7 @@ final class MeshEngine {
     private var nextSequence: UInt64 = 1
     private var advertisedRoutePeers = Set<PeerID>()
     private var endpointCandidatePeers = Set<PeerID>()
+    private var peerTrafficStats: [PeerID: RunningInfoSnapshot.PeerConnectionStats] = [:]
 
     init(transport: (any Transport)? = nil, deviceSeed: Data = Data("spotier.swift.core.device".utf8)) {
         injectedTransport = transport
@@ -83,6 +84,7 @@ final class MeshEngine {
         peerManager = nil
         peerStore = PeerStore()
         routeTable = RouteTable()
+        peerTrafficStats.removeAll()
         nextSequence = 1
         advertisedRoutePeers.removeAll()
         endpointCandidatePeers.removeAll()
@@ -105,7 +107,8 @@ final class MeshEngine {
             routeTable: routeTable,
             events: events,
             running: status == .running,
-            errorMessage: errorMessage
+            errorMessage: errorMessage,
+            peerTrafficStats: peerTrafficStats
         )
         return try? snapshot.jsonData()
     }
@@ -212,6 +215,7 @@ final class MeshEngine {
                     events.append(.logLine("Dropped disabled exit-node packet"))
                     return
                 }
+                recordReceivedPacket(from: inbound.frame.sender, byteCount: plaintext.count)
                 emitPacket(PacketTunnelPacket(data: plaintext, protocolFamily: protocolFamily(for: plaintext)))
             }
         } catch {
@@ -320,6 +324,21 @@ final class MeshEngine {
             payload: .data(DataPacket(encryptedIPPacket: encrypted))
         )
         try await transport?.send(frame, to: endpoint)
+        recordSentPacket(to: peerID, byteCount: packet.data.count)
+    }
+
+    private func recordSentPacket(to peerID: PeerID, byteCount: Int) {
+        var stats = peerTrafficStats[peerID] ?? RunningInfoSnapshot.PeerConnectionStats()
+        stats.txBytes += byteCount
+        stats.txPackets += 1
+        peerTrafficStats[peerID] = stats
+    }
+
+    private func recordReceivedPacket(from peerID: PeerID, byteCount: Int) {
+        var stats = peerTrafficStats[peerID] ?? RunningInfoSnapshot.PeerConnectionStats()
+        stats.rxBytes += byteCount
+        stats.rxPackets += 1
+        peerTrafficStats[peerID] = stats
     }
 
     private func protocolFamily(for packet: Data) -> Int32 {

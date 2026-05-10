@@ -55,6 +55,44 @@ final class MeshIntegrationTests: XCTestCase {
         XCTAssertEqual(receivedIPv6, PacketTunnelPacket(data: ipv6, protocolFamily: AF_INET6))
     }
 
+    func testRunningInfoAccumulatesPeerTrafficStats() async throws {
+        let transportA = InMemoryTransport(endpoint: TransportEndpoint(host: "node-a", port: 10003))
+        let transportB = InMemoryTransport(endpoint: TransportEndpoint(host: "node-b", port: 10004))
+        transportA.connect(to: transportB)
+        let engineA = MeshEngine(transport: transportA, deviceSeed: Data(repeating: 1, count: 32))
+        let engineB = MeshEngine(transport: transportB, deviceSeed: Data(repeating: 2, count: 32))
+        defer {
+            Task {
+                await engineA.stop()
+                await engineB.stop()
+            }
+        }
+
+        try await engineA.start(configuration: configuration(ipv4: "10.0.0.1/24", ipv6: "fd00:0:0:0:0:0:0:1"))
+        try await engineB.start(configuration: configuration(ipv4: "10.0.0.2/24", ipv6: "fd00:0:0:0:0:0:0:2"))
+        try await exchangeHello(from: engineA, transport: transportA, to: engineB, endpoint: transportB.endpoint)
+        try await exchangeHello(from: engineB, transport: transportB, to: engineA, endpoint: transportA.endpoint)
+        try await waitUntil(engineA.sessionEstablished(with: engineB), timeout: .milliseconds(500))
+        try await waitUntil(engineB.sessionEstablished(with: engineA), timeout: .milliseconds(500))
+
+        let packet = ipv4Packet(source: [10, 0, 0, 1], destination: [10, 0, 0, 2])
+        var outputB = engineB.outboundPackets.makeAsyncIterator()
+
+        await engineA.receivePacket(PacketTunnelPacket(data: packet, protocolFamily: AF_INET))
+        _ = await withTimeout(milliseconds: 500) {
+            await outputB.next()
+        }
+
+        let statsA = try XCTUnwrap(peerStats(from: engineA))
+        let statsB = try XCTUnwrap(peerStats(from: engineB))
+        XCTAssertEqual(statsA["tx_bytes"] as? Int, packet.count)
+        XCTAssertEqual(statsA["tx_packets"] as? Int, 1)
+        XCTAssertEqual(statsA["rx_bytes"] as? Int, 0)
+        XCTAssertEqual(statsB["rx_bytes"] as? Int, packet.count)
+        XCTAssertEqual(statsB["rx_packets"] as? Int, 1)
+        XCTAssertEqual(statsB["tx_bytes"] as? Int, 0)
+    }
+
     func testConfiguredPeerReceivesBootstrapHelloOnStart() async throws {
         let serverTransport = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19110))
         let clientTransport = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19111))
@@ -599,6 +637,14 @@ final class MeshIntegrationTests: XCTestCase {
             data.append(UInt8(group >> 8))
             data.append(UInt8(group & 0xFF))
         }
+    }
+
+    private func peerStats(from engine: MeshEngine) throws -> [String: Any]? {
+        let data = try XCTUnwrap(engine.runningInfoData())
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let peers = json?["peers"] as? [[String: Any]]
+        let connection = (peers?.first?["conns"] as? [[String: Any]])?.first
+        return connection?["stats"] as? [String: Any]
     }
 }
 

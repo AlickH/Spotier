@@ -26,12 +26,18 @@ struct RunningInfoSnapshot: Codable, Equatable {
         routeTable: RouteTable,
         events: [MeshEngineEvent],
         running: Bool,
-        errorMessage: String?
+        errorMessage: String?,
+        peerTrafficStats: [PeerID: PeerConnectionStats] = [:]
     ) -> RunningInfoSnapshot {
         let routeRows = makeRouteRows(peerStore: peerStore, routeTable: routeTable)
 
         let peerRows = peerStore.peers.map {
-            makePeerInfo(peer: $0, localIdentity: localIdentity, configuration: configuration)
+            makePeerInfo(
+                peer: $0,
+                localIdentity: localIdentity,
+                configuration: configuration,
+                stats: peerTrafficStats[$0.id] ?? PeerConnectionStats()
+            )
         }
 
         return RunningInfoSnapshot(
@@ -105,7 +111,8 @@ struct RunningInfoSnapshot: Codable, Equatable {
     private static func makePeerInfo(
         peer: Peer,
         localIdentity: NodeIdentity?,
-        configuration: MeshEngineConfiguration?
+        configuration: MeshEngineConfiguration?,
+        stats: PeerConnectionStats
     ) -> PeerInfo {
         let endpoint = primaryEndpoint(peer)
         let tunnel = makeTunnelInfo(endpoint: endpoint, configuration: configuration)
@@ -122,7 +129,7 @@ struct RunningInfoSnapshot: Codable, Equatable {
                     peerID: runningInfoPeerID(peer.id),
                     features: [],
                     tunnel: tunnel,
-                    stats: PeerConnectionStats(),
+                    stats: stats,
                     lossRate: 0,
                     networkName: configuration?.networkName,
                     isClosed: peer.isStale
