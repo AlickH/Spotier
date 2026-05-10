@@ -115,6 +115,11 @@
 			path = SpotierNE;
 			sourceTree = "<group>";
 		};
+		E1CC00012F70000100CCC001 /* SpotierCore */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SpotierCore;
+			sourceTree = "<group>";
+		};
 		E1AA00052F50000100AAA001 /* SpotierNETests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = SpotierNETests;
@@ -168,6 +173,7 @@
 			children = (
 				E0933DCE2F16A25B00C7DE59 /* Spotier */,
 				E0AB5CCC2F3CCD9C00BD8CBA /* SpotierNE */,
+				E1CC00012F70000100CCC001 /* SpotierCore */,
 				E1AA00052F50000100AAA001 /* SpotierNETests */,
 				E1BB00052F60000100BBB001 /* SpotierTests */,
 				E0AC7EEC2F19307C00FC425C /* Frameworks */,
@@ -217,6 +223,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				E0933DCE2F16A25B00C7DE59 /* Spotier */,
+				E1CC00012F70000100CCC001 /* SpotierCore */,
 			);
 			name = Spotier;
 			packageProductDependencies = (
@@ -239,6 +246,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				E0AB5CCC2F3CCD9C00BD8CBA /* SpotierNE */,
+				E1CC00012F70000100CCC001 /* SpotierCore */,
 			);
 			name = SpotierNE;
 			packageProductDependencies = (

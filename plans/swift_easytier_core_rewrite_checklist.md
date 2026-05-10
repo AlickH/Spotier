@@ -111,16 +111,16 @@
 - Create: `SpotierCore/Runtime/MeshEngineEvent.swift`
 - Test: `SpotierTests/MeshEngineConfigurationTests.swift`
 
-- [ ] Create `SpotierCore/` as the shared Swift core source group.
-- [ ] Add `SpotierCore/**/*.swift` files to the app target if the app needs models.
-- [ ] Add `SpotierCore/**/*.swift` files to the Packet Tunnel extension target.
-- [ ] Add `MeshEngineConfiguration` with network name, secret, virtual IPv4, virtual IPv6, peers, listeners, and MTU.
-- [ ] Add `MeshEngineStatus` with stopped, starting, running, stopping, failed.
-- [ ] Add `MeshEngineEvent` with statusChanged, peerChanged, routeChanged, logLine, fatalError.
-- [ ] Add `MeshEngine` with `start(configuration:)`, `stop()`, `sendProviderCommand(_:)`, and event stream.
-- [ ] Write tests for config validation using only fields currently accepted by Spotier.
-- [ ] Run the config tests and confirm they pass.
-- [ ] Commit.
+- [x] Create `SpotierCore/` as the shared Swift core source group.
+- [x] Add `SpotierCore/**/*.swift` files to the app target if the app needs models.
+- [x] Add `SpotierCore/**/*.swift` files to the Packet Tunnel extension target.
+- [x] Add `MeshEngineConfiguration` with network name, secret, virtual IPv4, virtual IPv6, peers, listeners, and MTU.
+- [x] Add `MeshEngineStatus` with stopped, starting, running, stopping, failed.
+- [x] Add `MeshEngineEvent` with statusChanged, peerChanged, routeChanged, logLine, fatalError.
+- [x] Add `MeshEngine` with `start(configuration:)`, `stop()`, `sendProviderCommand(_:)`, and event stream.
+- [x] Write tests for config validation using only fields currently accepted by Spotier.
+- [ ] Run the config tests and confirm they pass. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Commit.
 
 ### Task 3: Replace TOML Parsing Boundary
 
