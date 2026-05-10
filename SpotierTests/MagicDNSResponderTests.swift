@@ -24,6 +24,7 @@ final class MagicDNSResponderTests: XCTestCase {
 
         XCTAssertEqual(response[12..<16].map(Int.init), [100, 100, 100, 101])
         XCTAssertEqual(response[16..<20].map(Int.init), [10, 0, 0, 9])
+        XCTAssertEqual(ipv4HeaderChecksum(response), 0)
         XCTAssertEqual(response[20], 0)
         XCTAssertEqual(response[21], 53)
         XCTAssertEqual(response[22], 207)
@@ -89,11 +90,26 @@ final class MagicDNSResponderTests: XCTestCase {
         data.append(contentsOf: payload)
         return data
     }
+
+    private func ipv4HeaderChecksum(_ packet: Data) -> UInt16 {
+        var sum: UInt32 = 0
+        for offset in stride(from: 0, to: 20, by: 2) {
+            sum += UInt32(packet.readUInt16(at: offset))
+        }
+        while sum > 0xFFFF {
+            sum = (sum & 0xFFFF) + (sum >> 16)
+        }
+        return UInt16(~sum & 0xFFFF)
+    }
 }
 
 private extension Data {
     mutating func appendUInt16(_ value: UInt16) {
         append(UInt8(value >> 8))
         append(UInt8(value & 0xFF))
+    }
+
+    func readUInt16(at offset: Int) -> UInt16 {
+        (UInt16(self[offset]) << 8) | UInt16(self[offset + 1])
     }
 }

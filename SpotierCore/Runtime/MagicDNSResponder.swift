@@ -96,8 +96,22 @@ struct MagicDNSResponder {
         ])
         data.append(contentsOf: sourceBytes)
         data.append(contentsOf: destinationBytes)
+        let checksum = ipv4HeaderChecksum(data)
+        data[10] = UInt8(checksum >> 8)
+        data[11] = UInt8(checksum & 0xFF)
         data.append(payload)
         return data
+    }
+
+    private func ipv4HeaderChecksum(_ header: Data) -> UInt16 {
+        var sum: UInt32 = 0
+        for offset in stride(from: 0, to: 20, by: 2) {
+            sum += UInt32(header.readUInt16(at: offset))
+        }
+        while sum > 0xFFFF {
+            sum = (sum & 0xFFFF) + (sum >> 16)
+        }
+        return UInt16(~sum & 0xFFFF)
     }
 
     private func ipv4Bytes(_ address: String) -> [UInt8] {
