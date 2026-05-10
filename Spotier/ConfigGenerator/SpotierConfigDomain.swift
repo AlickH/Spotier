@@ -22,9 +22,7 @@ struct EditableStringItem: Identifiable, Equatable {
 
 struct SpotierConfigModel: Equatable {
     static let defaultListenerValues = [
-        "tcp://0.0.0.0:11010",
-        "udp://0.0.0.0:11010",
-        "wg://0.0.0.0:11011"
+        "udp://0.0.0.0:11010"
     ]
 
     var instanceName: String = Host.current().localizedName!
@@ -44,7 +42,7 @@ struct SpotierConfigModel: Equatable {
 
     var peerMode: PeerMode = .publicServer
     var manualPeers: [EditableStringItem] = [
-        EditableStringItem(value: "tcp://public.easytier.top:11010")
+        EditableStringItem(value: "udp://public.easytier.top:11010")
     ]
 
     var listeners: [EditableStringItem] = Array(values: SpotierConfigModel.defaultListenerValues)

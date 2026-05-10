@@ -16,8 +16,8 @@ final class ConfigTemplateFactoryTests: XCTestCase {
         XCTAssertEqual(ConfigTemplateFactory.filename(from: " office-node "), "office-node.toml")
         XCTAssertTrue(content.contains("instance_name = \"office-node\""))
         XCTAssertTrue(content.contains("instance_id = \"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\""))
-        XCTAssertTrue(content.contains("listeners = [\"tcp://0.0.0.0:11010\", \"udp://0.0.0.0:11010\", \"wg://0.0.0.0:11011\"]"))
+        XCTAssertTrue(content.contains("listeners = [\"udp://0.0.0.0:11010\"]"))
         XCTAssertTrue(content.contains("network_name = \"easytier\""))
-        XCTAssertTrue(content.contains("uri = \"tcp://public.easytier.top:11010\""))
+        XCTAssertTrue(content.contains("uri = \"udp://public.easytier.top:11010\""))
     }
 }

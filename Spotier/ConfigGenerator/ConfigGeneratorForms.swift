@@ -460,7 +460,7 @@ struct ConfigGeneratorMainForm: View {
             if model.peerMode == .manual {
                 ForEach($model.manualPeers) { $peer in
                     HStack {
-                        TextField("tcp://...", text: $peer.value)
+                        TextField("udp://...", text: $peer.value)
                             .textFieldStyle(.plain)
                             .labelsHidden()
                             .textContentType(.none)
@@ -479,7 +479,7 @@ struct ConfigGeneratorMainForm: View {
                 }
 
                 Button {
-                    model.manualPeers = ConfigGeneratorListBehavior.appended(model.manualPeers, value: "tcp://")
+                    model.manualPeers = ConfigGeneratorListBehavior.appended(model.manualPeers, value: "udp://")
                 } label: {
                     HStack {
                         Image(systemName: "plus.circle.fill")
@@ -492,7 +492,7 @@ struct ConfigGeneratorMainForm: View {
                 HStack {
                     Text(LocalizedStringKey("服务器"))
                     Spacer()
-                    Text("tcp://public.easytier.top:11010")
+                    Text("udp://public.easytier.top:11010")
                         .foregroundColor(.secondary)
                         .font(.caption)
                 }

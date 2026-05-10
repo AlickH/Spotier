@@ -55,7 +55,7 @@ enum ConfigGeneratorStore {
     private static func peersToSave(for model: SpotierConfigModel) -> [String] {
         switch model.peerMode {
         case .publicServer:
-            return ["tcp://public.easytier.top:11010"]
+            return ["udp://public.easytier.top:11010"]
         case .manual:
             return model.manualPeers.values
         case .standalone:

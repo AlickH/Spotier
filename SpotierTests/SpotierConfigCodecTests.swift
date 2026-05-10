@@ -123,15 +123,15 @@ final class SpotierConfigCodecTests: XCTestCase {
         model.cidr = "24"
         model.networkName = "prodnet"
         model.networkSecret = "secret"
-        model.listeners = .init(values: ["tcp://0.0.0.0:11010", ""])
-        model.mappedListeners = .init(values: ["tcp://203.0.113.8:11010"])
+        model.listeners = .init(values: ["udp://0.0.0.0:11010", ""])
+        model.mappedListeners = .init(values: ["udp://203.0.113.8:11010"])
         model.enableSocks5 = true
         model.socks5Port = 1088
         model.exitNodes = .init(values: ["exit-1"])
         model.enableManualRoutes = true
         model.manualRoutes = .init(values: ["10.8.0.0/16"])
         model.peerMode = .manual
-        model.manualPeers = .init(values: ["tcp://peer-a:11010", ""])
+        model.manualPeers = .init(values: ["udp://peer-a:11010", ""])
         model.mtu = 1500
         model.latencyFirst = true
         model.enableIPv6 = false
@@ -168,8 +168,8 @@ final class SpotierConfigCodecTests: XCTestCase {
         XCTAssertTrue(generated.contains("instance_name = \"generated-node\""))
         XCTAssertTrue(generated.contains("instance_id = \"generated-id\""))
         XCTAssertTrue(generated.contains("dhcp = false"))
-        XCTAssertTrue(generated.contains("listeners = [\"tcp://0.0.0.0:11010\"]"))
-        XCTAssertTrue(generated.contains("mapped_listeners = [\"tcp://203.0.113.8:11010\"]"))
+        XCTAssertTrue(generated.contains("listeners = [\"udp://0.0.0.0:11010\"]"))
+        XCTAssertTrue(generated.contains("mapped_listeners = [\"udp://203.0.113.8:11010\"]"))
         XCTAssertTrue(generated.contains("ipv4 = \"10.99.0.5/24\""))
         XCTAssertTrue(generated.contains("socks5_proxy = \"socks5://0.0.0.0:1088\""))
         XCTAssertTrue(generated.contains("exit_nodes = [\"exit-1\"]"))
@@ -177,7 +177,7 @@ final class SpotierConfigCodecTests: XCTestCase {
         XCTAssertTrue(generated.contains("[network_identity]"))
         XCTAssertTrue(generated.contains("network_name = \"prodnet\""))
         XCTAssertTrue(generated.contains("network_secret = \"secret\""))
-        XCTAssertTrue(generated.contains("[[peer]]\nuri = \"tcp://peer-a:11010\""))
+        XCTAssertTrue(generated.contains("[[peer]]\nuri = \"udp://peer-a:11010\""))
         XCTAssertTrue(generated.contains("[flags]"))
         XCTAssertTrue(generated.contains("mtu = 1500"))
         XCTAssertTrue(generated.contains("multi_thread = false"))

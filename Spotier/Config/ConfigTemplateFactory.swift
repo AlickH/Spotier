@@ -17,14 +17,14 @@ enum ConfigTemplateFactory {
         instance_name = "\(safeName)"
         instance_id = "\(instanceID.uuidString.lowercased())"
         dhcp = true
-        listeners = ["tcp://0.0.0.0:11010", "udp://0.0.0.0:11010", "wg://0.0.0.0:11011"]
+        listeners = ["udp://0.0.0.0:11010"]
 
         [network_identity]
         network_name = "easytier"
         network_secret = ""
 
         [[peer]]
-        uri = "tcp://public.easytier.top:11010"
+        uri = "udp://public.easytier.top:11010"
 
         [flags]
         mtu = 1380
