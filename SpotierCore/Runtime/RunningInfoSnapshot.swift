@@ -76,7 +76,18 @@ struct RunningInfoSnapshot: Codable, Equatable {
             }
         }
 
-        return rows
+        return rows.sorted { lhs, rhs in
+            switch (lhs.ipv4Address?.address.addr, rhs.ipv4Address?.address.addr) {
+            case let (lhsAddress?, rhsAddress?) where lhsAddress != rhsAddress:
+                return lhsAddress < rhsAddress
+            case (_?, nil):
+                return true
+            case (nil, _?):
+                return false
+            default:
+                return lhs.peerID < rhs.peerID
+            }
+        }
     }
 
     private static func updatedRouteRow(

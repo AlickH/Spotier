@@ -187,6 +187,47 @@ final class RunningInfoSnapshotTests: XCTestCase {
         XCTAssertEqual(route["version"] as? String, "swift-core")
     }
 
+    func testRunningInfoRoutesAreSortedByIPv4Address() throws {
+        var store = PeerStore()
+        store.upsert(Peer(
+            id: PeerID(3),
+            hostname: "later",
+            virtualIPv4: "10.0.0.3/24",
+            virtualIPv6: nil,
+            publicKey: Data(),
+            knownEndpoints: [],
+            lastSeen: Date()
+        ))
+        store.upsert(Peer(
+            id: PeerID(2),
+            hostname: "earlier",
+            virtualIPv4: "10.0.0.2/24",
+            virtualIPv6: nil,
+            publicKey: Data(),
+            knownEndpoints: [],
+            lastSeen: Date()
+        ))
+        var routes = RouteTable()
+        routes.apply(RouteUpdate(peerID: PeerID(3), ipv4Address: "10.0.0.3", ipv6Address: nil, nextHopPeerID: PeerID(3), cost: 1, proxyCIDRs: []))
+        routes.apply(RouteUpdate(peerID: PeerID(2), ipv4Address: "10.0.0.2", ipv6Address: nil, nextHopPeerID: PeerID(2), cost: 1, proxyCIDRs: []))
+
+        let snapshot = RunningInfoSnapshot.make(
+            localIdentity: nil,
+            configuration: MeshEngineConfiguration(networkName: "easytier", networkSecret: "secret"),
+            peerStore: store,
+            routeTable: routes,
+            events: [],
+            running: true,
+            errorMessage: nil
+        )
+        let json = try JSONSerialization.jsonObject(with: snapshot.jsonData()) as? [String: Any]
+        let routeRows = try XCTUnwrap(json?["routes"] as? [[String: Any]])
+        let peerRoutePairs = try XCTUnwrap(json?["peer_route_pairs"] as? [[String: Any]])
+
+        XCTAssertEqual(routeRows.compactMap { $0["peer_id"] as? Int }, [2, 3])
+        XCTAssertEqual(peerRoutePairs.compactMap { ($0["route"] as? [String: Any])?["peer_id"] as? Int }, [2, 3])
+    }
+
     func testRunningInfoPeerConnectionExposesDefaultUDPTunnel() throws {
         let network = NetworkSecret(networkName: "easytier", secret: "secret")
         let local = try NodeIdentity.derive(
