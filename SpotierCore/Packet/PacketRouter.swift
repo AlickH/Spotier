@@ -40,6 +40,9 @@ struct PacketRouter {
             if isSameIPv4Network(destination, localCIDR: localIPv4) {
                 return .drop
             }
+            if isSameIPv6Network(destination, localCIDR: localIPv6) {
+                return .drop
+            }
             if p2pOnly {
                 return .drop
             }
@@ -78,10 +81,39 @@ struct PacketRouter {
         return (localValue & mask) == (addressValue & mask)
     }
 
+    private func isSameIPv6Network(_ address: String, localCIDR: String?) -> Bool {
+        guard let localCIDR else { return false }
+        let parts = localCIDR.split(separator: "/", maxSplits: 1).map(String.init)
+        guard parts.count == 2,
+              let prefix = Int(parts[1]),
+              (0...128).contains(prefix),
+              let localBytes = parseIPv6(parts[0]),
+              let addressBytes = parseIPv6(address) else {
+            return false
+        }
+
+        let fullBytes = prefix / 8
+        let remainingBits = prefix % 8
+        if fullBytes > 0, localBytes[0..<fullBytes] != addressBytes[0..<fullBytes] {
+            return false
+        }
+        guard remainingBits > 0 else { return true }
+
+        let mask = UInt8.max << (8 - remainingBits)
+        return (localBytes[fullBytes] & mask) == (addressBytes[fullBytes] & mask)
+    }
+
     private func parseIPv4(_ address: String) -> UInt32? {
         let bytes = address.split(separator: ".").compactMap { UInt8($0) }
         guard bytes.count == 4 else { return nil }
         return bytes.reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
+    }
+
+    private func parseIPv6(_ address: String) -> [UInt8]? {
+        var storage = in6_addr()
+        let result = address.withCString { inet_pton(AF_INET6, $0, &storage) }
+        guard result == 1 else { return nil }
+        return withUnsafeBytes(of: storage) { Array($0) }
     }
 
     private func addressPart(_ cidrOrAddress: String?) -> String? {

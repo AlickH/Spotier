@@ -197,6 +197,33 @@ final class PacketClassifierTests: XCTestCase {
         XCTAssertEqual(router.route(packet), .drop)
     }
 
+    func testSameVirtualIPv6NetworkUnknownPeerDoesNotUseExitNode() throws {
+        let packet = try PacketClassifier.parse(ipv6Packet(
+            source: [0xfd00, 0, 0, 0, 0, 0, 0, 4],
+            destination: [0xfd00, 0, 0, 0, 0, 0, 0, 99],
+            nextHeader: 6,
+            payload: []
+        ))
+        var table = RouteTable()
+        table.apply(RouteUpdate(
+            peerID: PeerID(2),
+            ipv4Address: nil,
+            ipv6Address: "fd00:0:0:0:0:0:0:10",
+            nextHopPeerID: PeerID(2),
+            cost: 1,
+            proxyCIDRs: []
+        ))
+
+        let router = PacketRouter(
+            routeTable: table,
+            localIPv4: nil,
+            localIPv6: "fd00:0:0:0:0:0:0:4/64",
+            exitNodes: ["fd00:0:0:0:0:0:0:10"]
+        )
+
+        XCTAssertEqual(router.route(packet), .drop)
+    }
+
     func testRejectsNonIPPacket() {
         XCTAssertThrowsError(try PacketClassifier.parse(Data([0x10, 0x00]))) { error in
             XCTAssertEqual(error as? IPPacketError, .nonIPPacket)
