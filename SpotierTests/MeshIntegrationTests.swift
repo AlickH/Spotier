@@ -84,6 +84,43 @@ final class MeshIntegrationTests: XCTestCase {
         }
     }
 
+    func testOneWayConfiguredPeerEstablishesRouteAndTransfersPacket() async throws {
+        let transportA = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19120))
+        let transportB = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19121))
+        transportA.connect(to: transportB)
+        let engineA = MeshEngine(transport: transportA, deviceSeed: Data(repeating: 1, count: 32))
+        let engineB = MeshEngine(transport: transportB, deviceSeed: Data(repeating: 2, count: 32))
+        defer {
+            Task {
+                await engineA.stop()
+                await engineB.stop()
+            }
+        }
+
+        try await engineB.start(configuration: configuration(ipv4: "10.0.0.2/24", ipv6: "fd00:0:0:0:0:0:0:2"))
+        try await engineA.start(configuration: MeshEngineConfiguration(
+            networkName: "easytier",
+            networkSecret: "secret",
+            virtualIPv4: "10.0.0.1/24",
+            virtualIPv6: "fd00:0:0:0:0:0:0:1",
+            peers: ["udp://127.0.0.1:19121"],
+            listeners: ["udp://127.0.0.1:19120"],
+            mtu: 1380
+        ))
+        try await waitUntil(engineA.sessionEstablished(with: engineB), timeout: .milliseconds(500))
+        try await waitUntil(engineB.sessionEstablished(with: engineA), timeout: .milliseconds(500))
+
+        let ipv4 = ipv4Packet(source: [10, 0, 0, 1], destination: [10, 0, 0, 2])
+        var outputB = engineB.outboundPackets.makeAsyncIterator()
+
+        await engineA.receivePacket(PacketTunnelPacket(data: ipv4, protocolFamily: AF_INET))
+
+        let receivedIPv4 = await withTimeout(milliseconds: 500) {
+            await outputB.next()
+        }
+        XCTAssertEqual(receivedIPv4, PacketTunnelPacket(data: ipv4, protocolFamily: AF_INET))
+    }
+
     private func configuration(ipv4: String, ipv6: String) -> MeshEngineConfiguration {
         MeshEngineConfiguration(
             networkName: "easytier",

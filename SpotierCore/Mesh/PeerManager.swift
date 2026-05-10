@@ -107,29 +107,39 @@ final class PeerManager {
         endpoint: TransportEndpoint,
         now: Date
     ) throws -> [CoreFrame] {
+        let existingPeer = peerStore.peer(id: peerID)
+        var knownEndpoints = existingPeer?.knownEndpoints ?? []
+        knownEndpoints.insert(endpoint)
         let peer = Peer(
             id: peerID,
             hostname: hello.hostname,
             virtualIPv4: hello.virtualIPv4,
             virtualIPv6: hello.virtualIPv6,
             publicKey: hello.publicKey,
-            knownEndpoints: [endpoint],
+            knownEndpoints: knownEndpoints,
             lastSeen: now
         )
         peerStore.upsert(peer)
 
-        sessions[peerID] = PeerSession(
-            peerID: peerID,
-            handshakeState: HandshakeState(
-                network: network,
-                localPeerID: localIdentity.peerID,
-                remotePeerID: peerID,
-                remotePublicKey: hello.publicKey,
-                role: .responder
+        var responses = [CoreFrame]()
+        if sessions[peerID]?.health != .established {
+            sessions[peerID] = PeerSession(
+                peerID: peerID,
+                handshakeState: HandshakeState(
+                    network: network,
+                    localPeerID: localIdentity.peerID,
+                    remotePeerID: peerID,
+                    remotePublicKey: hello.publicKey,
+                    role: .responder
+                )
             )
-        )
+            responses.append(makeControlFrame(receiver: peerID, payload: .sessionOffer(localIdentity.publicKey)))
+        }
+        if existingPeer == nil {
+            responses.append(makeHelloFrame())
+        }
 
-        return [makeControlFrame(receiver: peerID, payload: .sessionOffer(localIdentity.publicKey))]
+        return responses
     }
 
     private func receiveSessionOffer(
