@@ -149,16 +149,17 @@
 - Create: `SpotierCore/Identity/PeerID.swift`
 - Test: `SpotierTests/IdentityTests.swift`
 
-- [ ] Define `NetworkSecret` as the network name plus secret material.
-- [ ] Define `NodeIdentity` with stable local peer ID, hostname, virtual addresses, and public key.
-- [ ] Define `PeerID` as a fixed-width value suitable for dictionary keys and wire encoding.
-- [ ] Derive local peer identity deterministically from network name, network secret, and device-specific stored seed.
-- [ ] Store the device seed in the App Group container.
-- [ ] Do not derive device identity from hostname.
-- [ ] Test deterministic identity generation with fixed seed.
-- [ ] Test different secrets produce different identities.
-- [ ] Test persisted seed reuse.
-- [ ] Commit.
+- [x] Define `NetworkSecret` as the network name plus secret material.
+- [x] Define `NodeIdentity` with stable local peer ID, hostname, virtual addresses, and public key.
+- [x] Define `PeerID` as a fixed-width value suitable for dictionary keys and wire encoding.
+- [x] Derive local peer identity deterministically from network name, network secret, and device-specific stored seed.
+- [x] Store the device seed in the App Group container.
+- [x] Do not derive device identity from hostname.
+- [x] Test deterministic identity generation with fixed seed.
+- [x] Test different secrets produce different identities.
+- [x] Test persisted seed reuse.
+- [ ] Run identity tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Commit.
 
 ### Task 5: Define Wire Frames
 
