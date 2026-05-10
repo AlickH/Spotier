@@ -184,4 +184,71 @@ final class RunningInfoSnapshotTests: XCTestCase {
         XCTAssertEqual(address?["addr"] as? Int, 167772162)
         XCTAssertEqual(route["proxy_cidrs"] as? [String], ["192.168.77.0/24", "192.168.88.0/24"])
     }
+
+    func testRunningInfoPeerConnectionExposesDefaultUDPTunnel() throws {
+        let network = NetworkSecret(networkName: "easytier", secret: "secret")
+        let local = try NodeIdentity.derive(
+            network: network,
+            deviceSeed: Data(repeating: 1, count: 32),
+            hostname: "local",
+            virtualIPv4: "10.0.0.1/24",
+            virtualIPv6: nil
+        )
+        var store = PeerStore()
+        store.upsert(Peer(
+            id: PeerID(2),
+            hostname: "peer",
+            virtualIPv4: "10.0.0.2/24",
+            virtualIPv6: nil,
+            publicKey: Data(),
+            knownEndpoints: [TransportEndpoint(host: "198.51.100.20", port: 22010)],
+            lastSeen: Date()
+        ))
+
+        let snapshot = RunningInfoSnapshot.make(
+            localIdentity: local,
+            configuration: MeshEngineConfiguration(
+                networkName: "easytier",
+                networkSecret: "secret",
+                listeners: ["udp://0.0.0.0:11010"]
+            ),
+            peerStore: store,
+            routeTable: RouteTable(),
+            events: [],
+            running: true,
+            errorMessage: nil
+        )
+        let json = try JSONSerialization.jsonObject(with: snapshot.jsonData()) as? [String: Any]
+        let peers = json?["peers"] as? [[String: Any]]
+        let peer = try XCTUnwrap(peers?.first)
+        let connections = peer["conns"] as? [[String: Any]]
+        let connection = try XCTUnwrap(connections?.first)
+        let tunnel = connection["tunnel"] as? [String: Any]
+        let localAddress = tunnel?["local_addr"] as? [String: Any]
+        let remoteAddress = tunnel?["remote_addr"] as? [String: Any]
+        let connectionID = try XCTUnwrap(connection["conn_id"] as? String)
+        let defaultConnectionID = try XCTUnwrap(peer["default_conn_id"] as? [String: Any])
+        let directlyConnected = try XCTUnwrap(peer["directly_connected_conns"] as? [[String: Any]])
+
+        XCTAssertEqual(connectionID, uuidString(defaultConnectionID))
+        XCTAssertEqual(directlyConnected.map(uuidString), [connectionID])
+        XCTAssertEqual(tunnel?["tunnel_type"] as? String, "udp")
+        XCTAssertEqual(localAddress?["url"] as? String, "udp://0.0.0.0:11010")
+        XCTAssertEqual(remoteAddress?["url"] as? String, "udp://198.51.100.20:22010")
+    }
+
+    private func uuidString(_ parts: [String: Any]) -> String {
+        String(
+            format: "%08x-%08x-%08x-%08x",
+            uuidPart(parts, "part1"),
+            uuidPart(parts, "part2"),
+            uuidPart(parts, "part3"),
+            uuidPart(parts, "part4")
+        )
+    }
+
+    private func uuidPart(_ parts: [String: Any], _ key: String) -> UInt32 {
+        let number = parts[key] as? NSNumber
+        return number?.uint32Value ?? 0
+    }
 }

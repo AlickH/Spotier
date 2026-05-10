@@ -30,26 +30,8 @@ struct RunningInfoSnapshot: Codable, Equatable {
     ) -> RunningInfoSnapshot {
         let routeRows = makeRouteRows(peerStore: peerStore, routeTable: routeTable)
 
-        let peerRows = peerStore.peers.map { peer in
-            PeerInfo(
-                peerID: runningInfoPeerID(peer.id),
-                connections: [
-                    PeerConnectionInfo(
-                        connectionID: "\(peer.id.rawValue)-direct",
-                        localPeerID: localIdentity.map { runningInfoPeerID($0.peerID) } ?? 0,
-                        isClient: true,
-                        peerID: runningInfoPeerID(peer.id),
-                        features: [],
-                        tunnel: nil,
-                        stats: PeerConnectionStats(),
-                        lossRate: 0,
-                        networkName: configuration?.networkName,
-                        isClosed: peer.isStale
-                    )
-                ],
-                defaultConnectionID: nil,
-                directlyConnectedConnectionIDs: []
-            )
+        let peerRows = peerStore.peers.map {
+            makePeerInfo(peer: $0, localIdentity: localIdentity, configuration: configuration)
         }
 
         return RunningInfoSnapshot(
@@ -118,6 +100,80 @@ struct RunningInfoSnapshot: Codable, Equatable {
         }
 
         return row
+    }
+
+    private static func makePeerInfo(
+        peer: Peer,
+        localIdentity: NodeIdentity?,
+        configuration: MeshEngineConfiguration?
+    ) -> PeerInfo {
+        let endpoint = primaryEndpoint(peer)
+        let tunnel = makeTunnelInfo(endpoint: endpoint, configuration: configuration)
+        let connectionID = connectionUUID(peerID: peer.id, endpoint: endpoint)
+        let directlyConnectedConnectionIDs = tunnel.map { _ in [connectionID] } ?? []
+
+        return PeerInfo(
+            peerID: runningInfoPeerID(peer.id),
+            connections: [
+                PeerConnectionInfo(
+                    connectionID: uuidString(connectionID),
+                    localPeerID: localIdentity.map { runningInfoPeerID($0.peerID) } ?? 0,
+                    isClient: true,
+                    peerID: runningInfoPeerID(peer.id),
+                    features: [],
+                    tunnel: tunnel,
+                    stats: PeerConnectionStats(),
+                    lossRate: 0,
+                    networkName: configuration?.networkName,
+                    isClosed: peer.isStale
+                )
+            ],
+            defaultConnectionID: tunnel.map { _ in connectionID },
+            directlyConnectedConnectionIDs: directlyConnectedConnectionIDs
+        )
+    }
+
+    private static func primaryEndpoint(_ peer: Peer) -> TransportEndpoint? {
+        peer.knownEndpoints.sorted {
+            if $0.host == $1.host {
+                return $0.port < $1.port
+            }
+            return $0.host < $1.host
+        }.first
+    }
+
+    private static func makeTunnelInfo(
+        endpoint: TransportEndpoint?,
+        configuration: MeshEngineConfiguration?
+    ) -> TunnelInfo? {
+        guard let endpoint,
+              let listener = udpListener(configuration) else {
+            return nil
+        }
+
+        return TunnelInfo(
+            tunnelType: "udp",
+            localAddress: URLString(url: listener),
+            remoteAddress: URLString(url: "udp://\(endpoint.host):\(endpoint.port)")
+        )
+    }
+
+    private static func udpListener(_ configuration: MeshEngineConfiguration?) -> String? {
+        ((configuration?.listeners ?? []) + (configuration?.mappedListeners ?? []))
+            .first { $0.hasPrefix("udp://") }
+    }
+
+    private static func connectionUUID(peerID: PeerID, endpoint: TransportEndpoint?) -> UUIDParts {
+        UUIDParts(
+            part1: UInt32(truncatingIfNeeded: peerID.rawValue >> 32),
+            part2: UInt32(truncatingIfNeeded: peerID.rawValue),
+            part3: UInt32(endpoint?.port ?? 0),
+            part4: 0
+        )
+    }
+
+    private static func uuidString(_ uuid: UUIDParts) -> String {
+        String(format: "%08x-%08x-%08x-%08x", uuid.part1, uuid.part2, uuid.part3, uuid.part4)
     }
 
     private static func runningInfoPeerID(_ peerID: PeerID) -> Int {
