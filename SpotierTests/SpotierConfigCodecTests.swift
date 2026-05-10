@@ -171,7 +171,6 @@ final class SpotierConfigCodecTests: XCTestCase {
         XCTAssertTrue(generated.contains("listeners = [\"udp://0.0.0.0:11010\"]"))
         XCTAssertTrue(generated.contains("mapped_listeners = [\"udp://203.0.113.8:11010\"]"))
         XCTAssertTrue(generated.contains("ipv4 = \"10.99.0.5/24\""))
-        XCTAssertTrue(generated.contains("socks5_proxy = \"socks5://0.0.0.0:1088\""))
         XCTAssertTrue(generated.contains("exit_nodes = [\"exit-1\"]"))
         XCTAssertTrue(generated.contains("routes = [\"10.8.0.0/16\"]"))
         XCTAssertTrue(generated.contains("[network_identity]"))
@@ -180,12 +179,71 @@ final class SpotierConfigCodecTests: XCTestCase {
         XCTAssertTrue(generated.contains("[[peer]]\nuri = \"udp://peer-a:11010\""))
         XCTAssertTrue(generated.contains("[flags]"))
         XCTAssertTrue(generated.contains("mtu = 1500"))
-        XCTAssertTrue(generated.contains("multi_thread = false"))
-        XCTAssertTrue(generated.contains("relay_network_whitelist = \"corp office\""))
-        XCTAssertTrue(generated.contains("[vpn_portal_config]"))
-        XCTAssertTrue(generated.contains("wireguard_listen = \"0.0.0.0:22022\""))
+        XCTAssertTrue(generated.contains("latency_first = true"))
+        XCTAssertTrue(generated.contains("disable_ipv6 = true"))
+        XCTAssertTrue(generated.contains("disable_encryption = true"))
+        XCTAssertTrue(generated.contains("disable_p2p = true"))
+        XCTAssertTrue(generated.contains("p2p_only = true"))
+        XCTAssertTrue(generated.contains("disable_udp_hole_punching = true"))
+        XCTAssertTrue(generated.contains("enable_exit_node = true"))
+        XCTAssertTrue(generated.contains("enable_magic_dns = true"))
+        XCTAssertTrue(generated.contains("enable_private_mode = true"))
         XCTAssertTrue(generated.contains("[[proxy_network]]\ncidr = \"192.168.1.0/24\""))
-        XCTAssertTrue(generated.contains("[[port_forward]]\nproto = \"tcp\""))
+        XCTAssertFalse(generated.contains("socks5_proxy"))
+        XCTAssertFalse(generated.contains("use_smoltcp"))
+        XCTAssertFalse(generated.contains("no_tun"))
+        XCTAssertFalse(generated.contains("bind_device"))
+        XCTAssertFalse(generated.contains("enable_kcp_proxy"))
+        XCTAssertFalse(generated.contains("disable_kcp_input"))
+        XCTAssertFalse(generated.contains("enable_quic_proxy"))
+        XCTAssertFalse(generated.contains("disable_quic_input"))
+        XCTAssertFalse(generated.contains("relay_all_peer_rpc"))
+        XCTAssertFalse(generated.contains("multi_thread"))
+        XCTAssertFalse(generated.contains("proxy_forward_by_system"))
+        XCTAssertFalse(generated.contains("disable_sym_hole_punching"))
+        XCTAssertFalse(generated.contains("relay_network_whitelist"))
+        XCTAssertFalse(generated.contains("[vpn_portal_config]"))
+        XCTAssertFalse(generated.contains("[[port_forward]]"))
         XCTAssertFalse(generated.contains("\"\""))
+    }
+
+    func testGenerateOmitsFieldsTheSwiftCoreDoesNotExecute() {
+        var model = SpotierConfigModel()
+        model.enableSocks5 = true
+        model.useSmoltcp = true
+        model.noTun = true
+        model.bindDevice = true
+        model.enableKcpProxy = true
+        model.disableKcpInput = true
+        model.enableQuicProxy = true
+        model.disableQuicInput = true
+        model.relayAllPeerRpc = true
+        model.multiThread = false
+        model.proxyForwardBySystem = true
+        model.disableSymHolePunching = true
+        model.enableRelayNetworkWhitelist = true
+        model.relayNetworkWhitelist = .init(values: ["corp"])
+        model.enableVpnPortal = true
+        model.portForwards = [
+            PortForwardRule(protocolType: "TCP", bindIp: "0.0.0.0", bindPort: "8080", targetIp: "10.0.0.8", targetPort: "80")
+        ]
+
+        let generated = SpotierConfigCodec.generate(from: model, peers: [])
+
+        XCTAssertFalse(generated.contains("socks5_proxy"))
+        XCTAssertFalse(generated.contains("use_smoltcp"))
+        XCTAssertFalse(generated.contains("no_tun"))
+        XCTAssertFalse(generated.contains("bind_device"))
+        XCTAssertFalse(generated.contains("enable_kcp_proxy"))
+        XCTAssertFalse(generated.contains("disable_kcp_input"))
+        XCTAssertFalse(generated.contains("enable_quic_proxy"))
+        XCTAssertFalse(generated.contains("disable_quic_input"))
+        XCTAssertFalse(generated.contains("relay_all_peer_rpc"))
+        XCTAssertFalse(generated.contains("multi_thread"))
+        XCTAssertFalse(generated.contains("proxy_forward_by_system"))
+        XCTAssertFalse(generated.contains("disable_sym_hole_punching"))
+        XCTAssertFalse(generated.contains("relay_network_whitelist"))
+        XCTAssertFalse(generated.contains("[vpn_portal_config]"))
+        XCTAssertFalse(generated.contains("[[port_forward]]"))
     }
 }

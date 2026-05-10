@@ -184,10 +184,6 @@ enum SpotierConfigCodec {
             toml += "\nipv4 = \"\(model.ipv4)/\(model.cidr)\""
         }
 
-        if model.enableSocks5 {
-            toml += "\nsocks5_proxy = \"socks5://0.0.0.0:\(model.socks5Port)\""
-        }
-
         let exitNodes = model.exitNodes.values.filter { !$0.isEmpty }
         if !exitNodes.isEmpty {
             toml += "\nexit_nodes = [\(quotedList(exitNodes))]"
@@ -214,40 +210,15 @@ enum SpotierConfigCodec {
         if model.latencyFirst { flags += "\nlatency_first = true" }
         if !model.enableIPv6 { flags += "\ndisable_ipv6 = true" }
         if !model.enableEncryption { flags += "\ndisable_encryption = true" }
-        if model.useSmoltcp { flags += "\nuse_smoltcp = true" }
-        if model.noTun { flags += "\nno_tun = true" }
         if model.disableP2P { flags += "\ndisable_p2p = true" }
         if model.onlyP2P { flags += "\np2p_only = true" }
         if model.disableUdpHolePunching { flags += "\ndisable_udp_hole_punching = true" }
         if model.enableExitNode { flags += "\nenable_exit_node = true" }
-        if model.enableKcpProxy { flags += "\nenable_kcp_proxy = true" }
-        if model.disableKcpInput { flags += "\ndisable_kcp_input = true" }
-        if model.enableQuicProxy { flags += "\nenable_quic_proxy = true" }
-        if model.disableQuicInput { flags += "\ndisable_quic_input = true" }
-        if model.relayAllPeerRpc { flags += "\nrelay_all_peer_rpc = true" }
-        if model.bindDevice { flags += "\nbind_device = true" }
-        flags += "\nmulti_thread = \(model.multiThread)"
-        if model.proxyForwardBySystem { flags += "\nproxy_forward_by_system = true" }
-        if model.disableSymHolePunching { flags += "\ndisable_sym_hole_punching = true" }
         if model.enableMagicDns { flags += "\nenable_magic_dns = true" }
         if model.enablePrivateMode { flags += "\nenable_private_mode = true" }
 
-        let relayWhitelist = model.relayNetworkWhitelist.values.filter { !$0.isEmpty }
-        if model.enableRelayNetworkWhitelist && !relayWhitelist.isEmpty {
-            flags += "\nrelay_network_whitelist = \"\(relayWhitelist.joined(separator: " "))\""
-        }
-
         if !flags.isEmpty {
             toml += "\n\n[flags]" + flags
-        }
-
-        if model.enableVpnPortal {
-            toml += """
-
-            [vpn_portal_config]
-            client_cidr = "\(model.vpnPortalClientCidr)"
-            wireguard_listen = "0.0.0.0:\(model.vpnPortalListenPort)"
-            """
         }
 
         for subnet in model.proxySubnets where !subnet.cidr.isEmpty {
@@ -255,16 +226,6 @@ enum SpotierConfigCodec {
 
             [[proxy_network]]
             cidr = "\(subnet.cidr)"
-            """
-        }
-
-        for rule in model.portForwards where !rule.bindPort.isEmpty && !rule.targetPort.isEmpty {
-            toml += """
-
-            [[port_forward]]
-            proto = "\(rule.protocolType.lowercased())"
-            bind_addr = "\(rule.bindIp.isEmpty ? "0.0.0.0" : rule.bindIp):\(rule.bindPort)"
-            dst_addr = "\(rule.targetIp):\(rule.targetPort)"
             """
         }
 
