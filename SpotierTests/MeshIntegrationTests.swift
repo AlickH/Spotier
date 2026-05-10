@@ -497,7 +497,8 @@ final class MeshIntegrationTests: XCTestCase {
                 hostname: identity.hostname,
                 virtualIPv4: identity.virtualIPv4,
                 virtualIPv6: identity.virtualIPv6,
-                publicKey: identity.publicKey
+                publicKey: identity.publicKey,
+                version: "swift-core"
             )))
         )
         try await transport.send(frame, to: endpoint)

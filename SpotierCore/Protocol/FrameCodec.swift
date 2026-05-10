@@ -105,6 +105,7 @@ enum FrameCodec {
             try data.appendOptionalString(hello.virtualIPv4)
             try data.appendOptionalString(hello.virtualIPv6)
             data.appendDataField(hello.publicKey)
+            try data.appendString(hello.version)
         case .sessionOffer(let payload):
             data.append(ControlType.sessionOffer.rawValue)
             data.appendDataField(payload)
@@ -146,7 +147,8 @@ enum FrameCodec {
                 hostname: try cursor.readString(),
                 virtualIPv4: try cursor.readOptionalString(),
                 virtualIPv6: try cursor.readOptionalString(),
-                publicKey: try cursor.readDataField()
+                publicKey: try cursor.readDataField(),
+                version: try cursor.readString()
             ))
         case .sessionOffer:
             message = .sessionOffer(try cursor.readDataField())

@@ -88,7 +88,7 @@ struct RunningInfoSnapshot: Codable, Equatable {
             proxyCIDRs: [],
             hostname: peerStore.peer(id: route.ownerPeerID)?.hostname ?? "",
             instID: "",
-            version: ""
+            version: peerStore.peer(id: route.ownerPeerID)?.version ?? ""
         )
 
         switch route.kind {

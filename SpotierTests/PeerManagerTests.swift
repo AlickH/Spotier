@@ -18,6 +18,7 @@ final class PeerManagerTests: XCTestCase {
         XCTAssertEqual(peer?.virtualIPv4, "10.0.0.2/24")
         XCTAssertEqual(peer?.knownEndpoints, [endpoint])
         XCTAssertEqual(peer?.routeCost, 1)
+        XCTAssertEqual(peer?.version, "swift-core")
         XCTAssertEqual(responses.first?.payload, .control(.sessionOffer(local.publicKey)))
     }
 
@@ -104,7 +105,8 @@ final class PeerManagerTests: XCTestCase {
                 hostname: identity.hostname,
                 virtualIPv4: identity.virtualIPv4,
                 virtualIPv6: identity.virtualIPv6,
-                publicKey: identity.publicKey
+                publicKey: identity.publicKey,
+                version: "swift-core"
             )))
         )
     }

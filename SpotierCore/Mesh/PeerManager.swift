@@ -30,7 +30,8 @@ final class PeerManager {
                 hostname: localIdentity.hostname,
                 virtualIPv4: localIdentity.virtualIPv4,
                 virtualIPv6: localIdentity.virtualIPv6,
-                publicKey: localIdentity.publicKey
+                publicKey: localIdentity.publicKey,
+                version: "swift-core"
             ))
         )
     }
@@ -121,6 +122,7 @@ final class PeerManager {
             virtualIPv6: hello.virtualIPv6,
             publicKey: hello.publicKey,
             knownEndpoints: knownEndpoints,
+            version: hello.version,
             lastSeen: now
         )
         peerStore.upsert(peer)

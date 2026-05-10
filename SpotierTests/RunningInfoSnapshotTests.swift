@@ -20,6 +20,7 @@ final class RunningInfoSnapshotTests: XCTestCase {
             virtualIPv6: nil,
             publicKey: Data(),
             knownEndpoints: [],
+            version: "swift-core",
             lastSeen: Date()
         ))
         var routes = RouteTable()
@@ -183,6 +184,7 @@ final class RunningInfoSnapshotTests: XCTestCase {
         XCTAssertEqual(routeRows?.count, 1)
         XCTAssertEqual(address?["addr"] as? Int, 167772162)
         XCTAssertEqual(route["proxy_cidrs"] as? [String], ["192.168.77.0/24", "192.168.88.0/24"])
+        XCTAssertEqual(route["version"] as? String, "swift-core")
     }
 
     func testRunningInfoPeerConnectionExposesDefaultUDPTunnel() throws {

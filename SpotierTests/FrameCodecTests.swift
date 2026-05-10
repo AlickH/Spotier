@@ -8,7 +8,8 @@ final class FrameCodecTests: XCTestCase {
                 hostname: "mac",
                 virtualIPv4: "10.0.0.2/24",
                 virtualIPv6: "fd00::2/64",
-                publicKey: Data([1, 2, 3, 4])
+                publicKey: Data([1, 2, 3, 4]),
+                version: "swift-core"
             )),
             .sessionOffer(Data([5, 6, 7])),
             .sessionAnswer(Data([8, 9, 10])),

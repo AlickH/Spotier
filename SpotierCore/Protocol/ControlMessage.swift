@@ -16,17 +16,20 @@ enum ControlMessage: Equatable {
         var virtualIPv4: String?
         var virtualIPv6: String?
         var publicKey: Data
+        var version: String
 
         init(
             hostname: String,
             virtualIPv4: String?,
             virtualIPv6: String?,
-            publicKey: Data
+            publicKey: Data,
+            version: String
         ) {
             self.hostname = hostname
             self.virtualIPv4 = virtualIPv4
             self.virtualIPv6 = virtualIPv6
             self.publicKey = publicKey
+            self.version = version
         }
     }
 }

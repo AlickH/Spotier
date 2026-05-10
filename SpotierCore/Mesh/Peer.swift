@@ -7,6 +7,7 @@ struct Peer: Equatable {
     var virtualIPv6: String?
     var publicKey: Data
     var knownEndpoints: Set<TransportEndpoint>
+    var version: String
     var relayAvailable: Bool
     var lastSeen: Date
     var routeCost: Int
@@ -19,6 +20,7 @@ struct Peer: Equatable {
         virtualIPv6: String?,
         publicKey: Data,
         knownEndpoints: Set<TransportEndpoint>,
+        version: String = "swift-core",
         relayAvailable: Bool = false,
         lastSeen: Date,
         routeCost: Int = 1,
@@ -30,6 +32,7 @@ struct Peer: Equatable {
         self.virtualIPv6 = virtualIPv6
         self.publicKey = publicKey
         self.knownEndpoints = knownEndpoints
+        self.version = version
         self.relayAvailable = relayAvailable
         self.lastSeen = lastSeen
         self.routeCost = routeCost
