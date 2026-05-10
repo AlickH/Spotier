@@ -89,22 +89,4 @@ struct EasyTierCore {
         }
     }
     
-    // 获取运行状态 JSON
-    static func getRunningInfo() -> String? {
-        var jsonPtr: UnsafePointer<CChar>? = nil
-        var errPtr: UnsafePointer<CChar>? = nil
-        
-        let ret = get_running_info(&jsonPtr, &errPtr)
-        
-        if ret == 0, let ptr = jsonPtr {
-            let json = String(cString: ptr)
-            free_string(ptr)
-            return json
-        }
-        
-        if let ptr = errPtr {
-            free_string(ptr)
-        }
-        return nil
-    }
 }

@@ -37,24 +37,3 @@ func extractRustString(_ strPtr: UnsafePointer<CChar>?) -> String? {
     free_string(strPtr)
     return str
 }
-
-func fetchRunningInfo() -> RunningInfo? {
-    var infoPtr: UnsafePointer<CChar>? = nil
-    var errPtr: UnsafePointer<CChar>? = nil
-    if get_running_info(&infoPtr, &errPtr) == 0, let info = extractRustString(infoPtr) {
-        guard let data = info.data(using: .utf8) else {
-            logger.error("fetchRunningInfo() invalid utf8 data")
-            return nil
-        }
-        do {
-            let decoded = try JSONDecoder().decode(RunningInfo.self, from: data)
-            logger.info("fetchRunningInfo() routes: \(decoded.routes.count)")
-            return decoded
-        } catch {
-            logger.error("fetchRunningInfo() json decode failed: \(error, privacy: .public)")
-        }
-    } else if let err = extractRustString(errPtr) {
-        logger.error("fetchRunningInfo() failed: \(err, privacy: .public)")
-    }
-    return nil
-}

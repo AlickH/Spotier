@@ -155,7 +155,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         }
     }
     
-    /// Build NEPacketTunnelNetworkSettings dynamically from get_running_info()
+    /// Build NEPacketTunnelNetworkSettings dynamically from the Swift core running info snapshot.
     private func buildSettings() -> NEPacketTunnelNetworkSettings {
         let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "127.0.0.1")
         let runningInfo = fetchRunningInfo()
@@ -299,16 +299,11 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     override func handleAppMessage(_ messageData: Data, completionHandler: ((Data?) -> Void)?) {
         guard let handler = completionHandler else { return }
         
-        // Command: "running_info" -> return get_running_info JSON
+        // Command: "running_info" -> return Swift core running info JSON.
         if let command = String(data: messageData, encoding: .utf8) {
             switch command {
             case "running_info":
-                if let json = EasyTierCore.getRunningInfo(),
-                   let data = json.data(using: .utf8) {
-                    handler(data)
-                } else {
-                    handler(nil)
-                }
+                handler(meshEngine?.runningInfoData())
             default:
                 handler(nil)
             }
@@ -329,8 +324,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     // MARK: - Helpers
     
     private func fetchRunningInfo() -> RunningInfo? {
-        guard let json = EasyTierCore.getRunningInfo(),
-              let data = json.data(using: .utf8) else { return nil }
+        guard let data = meshEngine?.runningInfoData() else { return nil }
         do {
             return try JSONDecoder().decode(RunningInfo.self, from: data)
         } catch {

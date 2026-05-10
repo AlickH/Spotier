@@ -6,6 +6,9 @@ final class MeshEngine {
     private(set) var status: MeshEngineStatus = .stopped
     private(set) var configuration: MeshEngineConfiguration?
     private(set) var events: [MeshEngineEvent] = []
+    private(set) var localIdentity: NodeIdentity?
+    private(set) var peerStore = PeerStore()
+    private(set) var routeTable = RouteTable()
     private var transport: (any Transport)?
     private var outboundPacketContinuation: AsyncStream<PacketTunnelPacket>.Continuation?
 
@@ -19,6 +22,16 @@ final class MeshEngine {
         try configuration.validate()
         setStatus(.starting)
         self.configuration = configuration
+        localIdentity = try NodeIdentity.derive(
+            network: NetworkSecret(
+                networkName: configuration.networkName,
+                secret: configuration.networkSecret
+            ),
+            deviceSeed: Data("spotier.swift.core.device".utf8),
+            hostname: Host.current().localizedName ?? "spotier",
+            virtualIPv4: configuration.virtualIPv4,
+            virtualIPv6: configuration.virtualIPv6
+        )
 
         do {
             if let udpPort = try configuredUDPPort(from: configuration.listeners) {
@@ -41,6 +54,7 @@ final class MeshEngine {
         await transport?.stop()
         transport = nil
         configuration = nil
+        localIdentity = nil
         setStatus(.stopped)
     }
 
@@ -51,6 +65,19 @@ final class MeshEngine {
 
         let json = #"{"dev_name":"","events":[],"routes":[],"peers":[],"peer_route_pairs":[],"running":\#(status == .running)}"#
         return json.data(using: .utf8)
+    }
+
+    func runningInfoData() -> Data? {
+        let snapshot = RunningInfoSnapshot.make(
+            localIdentity: localIdentity,
+            configuration: configuration,
+            peerStore: peerStore,
+            routeTable: routeTable,
+            events: events,
+            running: status == .running,
+            errorMessage: errorMessage
+        )
+        return try? snapshot.jsonData()
     }
 
     func receivePacket(_ packet: PacketTunnelPacket) async {
@@ -76,5 +103,12 @@ final class MeshEngine {
     private func setStatus(_ newStatus: MeshEngineStatus) {
         status = newStatus
         events.append(.statusChanged(newStatus))
+    }
+
+    private var errorMessage: String? {
+        if case .failed(let message) = status {
+            return message
+        }
+        return nil
     }
 }

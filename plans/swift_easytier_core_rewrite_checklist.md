@@ -329,15 +329,16 @@
 - Test: `SpotierNETests/InfoModelIPv6Tests.swift`
 - Test: `SpotierTests/RunningInfoSnapshotTests.swift`
 
-- [ ] Define `RunningInfoSnapshot` from Swift core state.
-- [ ] Preserve existing JSON fields consumed by the app.
-- [ ] Generate peer list from `PeerStore`.
-- [ ] Generate route list from `RouteTable`.
-- [ ] Generate NAT and transport fields from transport state.
-- [ ] Serve `running_info` provider message from Swift core.
-- [ ] Remove `EasyTierCore.getRunningInfo`.
-- [ ] Update tests for the new snapshot source.
-- [ ] Commit.
+- [x] Define `RunningInfoSnapshot` from Swift core state.
+- [x] Preserve existing JSON fields consumed by the app.
+- [x] Generate peer list from `PeerStore`.
+- [x] Generate route list from `RouteTable`.
+- [x] Generate NAT and transport fields from transport state.
+- [x] Serve `running_info` provider message from Swift core.
+- [x] Remove `EasyTierCore.getRunningInfo`.
+- [x] Update tests for the new snapshot source.
+- [ ] Run running info snapshot tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Commit.
 
 ### Task 14: Implement NAT Discovery And Hole Punch Coordination
 
