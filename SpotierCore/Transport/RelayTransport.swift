@@ -22,10 +22,10 @@ final class RelayTransport: Transport {
         }
 
         switch scheme {
-        case "tcp":
+        case RelayProtocolV1.tcpScheme:
             parameters = .tcp
             usesTLS = false
-        case "tls":
+        case RelayProtocolV1.tlsScheme:
             parameters = .tls
             usesTLS = true
         default:
@@ -94,7 +94,7 @@ final class RelayTransport: Transport {
     }
 
     private func receive(on connection: NWConnection) {
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) { [weak self] data, _, isComplete, error in
+        connection.receive(minimumIncompleteLength: 1, maximumLength: RelayProtocolV1.maximumRecordLength) { [weak self] data, _, isComplete, error in
             guard let self else { return }
 
             if let data, !data.isEmpty {
@@ -137,6 +137,14 @@ final class RelayTransport: Transport {
     }
 }
 
+enum RelayProtocolV1 {
+    static let tcpScheme = "tcp"
+    static let tlsScheme = "tls"
+    static let sequenceLength = 8
+    static let lengthPrefixLength = 4
+    static let maximumRecordLength = 64 * 1024
+}
+
 enum RelayTransportError: Error, Equatable {
     case invalidURL(String)
     case unsupportedScheme(String)
@@ -148,24 +156,24 @@ enum RelayFrameCodec {
         let ciphertext = try crypto.encrypt(sequence: frame.sequence, plaintext: plaintext)
 
         var record = Data()
-        record.reserveCapacity(8 + ciphertext.count)
+        record.reserveCapacity(RelayProtocolV1.sequenceLength + ciphertext.count)
         record.appendUInt64(frame.sequence)
         record.append(ciphertext)
 
         var data = Data()
-        data.reserveCapacity(4 + record.count)
+        data.reserveCapacity(RelayProtocolV1.lengthPrefixLength + record.count)
         data.appendUInt32(UInt32(record.count))
         data.append(record)
         return data
     }
 
     static func decode(_ record: Data, crypto: SessionCrypto) throws -> CoreFrame {
-        guard record.count >= 8 else {
+        guard record.count >= RelayProtocolV1.sequenceLength else {
             throw TransportError.malformedRelayFrame
         }
 
         let sequence = record.readUInt64(at: 0)
-        let ciphertext = record.dropFirst(8)
+        let ciphertext = record.dropFirst(RelayProtocolV1.sequenceLength)
         let plaintext = try crypto.decrypt(sequence: sequence, ciphertext: Data(ciphertext))
         return try FrameCodec.decode(plaintext)
     }

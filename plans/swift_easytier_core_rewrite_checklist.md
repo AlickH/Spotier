@@ -367,12 +367,13 @@
 - Modify: `SpotierCore/Transport/RelayTransport.swift`
 - Test: `SpotierTests/RelayProtocolContractTests.swift`
 
-- [ ] Decide whether Spotier Swift core speaks to existing EasyTier relay nodes or Spotier-owned relay nodes.
-- [ ] If existing EasyTier relay compatibility is required, document the exact subset of EasyTier protocol to implement.
-- [ ] If Spotier-owned relay is required, document the relay protocol as Spotier protocol v1.
-- [ ] Add contract tests from recorded frames or local relay fixtures.
-- [ ] Do not support both relay protocols in the same implementation pass.
-- [ ] Commit the relay contract before coding protocol-specific behavior.
+- [x] Decide whether Spotier Swift core speaks to existing EasyTier relay nodes or Spotier-owned relay nodes.
+- [x] Existing EasyTier relay compatibility is not required for this implementation pass.
+- [x] Document Spotier-owned relay protocol as Spotier protocol v1.
+- [x] Add contract tests from local relay fixtures.
+- [x] Do not support both relay protocols in the same implementation pass.
+- [ ] Run relay protocol contract tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Commit the relay contract before coding protocol-specific behavior.
 
 ### Task 16: Replace Host App FFI Usage
 
