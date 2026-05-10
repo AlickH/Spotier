@@ -280,6 +280,51 @@ final class RunningInfoSnapshotTests: XCTestCase {
         XCTAssertEqual(remoteAddress?["url"] as? String, "udp://198.51.100.20:22010")
     }
 
+    func testRunningInfoPeerConnectionPreservesRemoteEndpointScheme() throws {
+        let network = NetworkSecret(networkName: "easytier", secret: "secret")
+        let local = try NodeIdentity.derive(
+            network: network,
+            deviceSeed: Data(repeating: 1, count: 32),
+            hostname: "local",
+            virtualIPv4: "10.0.0.1/24",
+            virtualIPv6: nil
+        )
+        var store = PeerStore()
+        store.upsert(Peer(
+            id: PeerID(2),
+            hostname: "peer",
+            virtualIPv4: "10.0.0.2/24",
+            virtualIPv6: nil,
+            publicKey: Data(),
+            knownEndpoints: [try TransportEndpoint(urlString: "tcp://relay.example.com:11010")],
+            lastSeen: Date()
+        ))
+
+        let snapshot = RunningInfoSnapshot.make(
+            localIdentity: local,
+            configuration: MeshEngineConfiguration(
+                networkName: "easytier",
+                networkSecret: "secret",
+                listeners: ["udp://0.0.0.0:11010"]
+            ),
+            peerStore: store,
+            routeTable: RouteTable(),
+            events: [],
+            running: true,
+            errorMessage: nil
+        )
+        let json = try JSONSerialization.jsonObject(with: snapshot.jsonData()) as? [String: Any]
+        let peers = json?["peers"] as? [[String: Any]]
+        let peer = try XCTUnwrap(peers?.first)
+        let connections = peer["conns"] as? [[String: Any]]
+        let connection = try XCTUnwrap(connections?.first)
+        let tunnel = connection["tunnel"] as? [String: Any]
+        let remoteAddress = tunnel?["remote_addr"] as? [String: Any]
+
+        XCTAssertEqual(tunnel?["tunnel_type"] as? String, "tcp")
+        XCTAssertEqual(remoteAddress?["url"] as? String, "tcp://relay.example.com:11010")
+    }
+
     private func uuidString(_ parts: [String: Any]) -> String {
         String(
             format: "%08x-%08x-%08x-%08x",

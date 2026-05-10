@@ -170,9 +170,9 @@ struct RunningInfoSnapshot: Codable, Equatable {
         }
 
         return TunnelInfo(
-            tunnelType: "udp",
+            tunnelType: endpoint.scheme,
             localAddress: URLString(url: listener),
-            remoteAddress: URLString(url: "udp://\(endpoint.host):\(endpoint.port)")
+            remoteAddress: URLString(url: "\(endpoint.scheme)://\(endpoint.host):\(endpoint.port)")
         )
     }
 

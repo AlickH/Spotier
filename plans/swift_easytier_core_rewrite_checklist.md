@@ -508,6 +508,7 @@
 - [x] Hide unsupported Rust-only advanced config controls while keeping old-config parsing intact.
 - [x] Delete dead SwiftUI form code for unsupported Rust-only advanced controls.
 - [x] Allow `MeshEngine` bootstrap over explicitly injected Spotier relay transports without weakening UDP-only default startup validation.
+- [x] Preserve remote endpoint schemes in Swift-core running-info tunnel output instead of reporting relay/TCP peers as UDP.
 
 ## Explicitly Out Of Scope
 
