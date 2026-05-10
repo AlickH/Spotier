@@ -80,7 +80,7 @@ final class MeshEngineTransportTests: XCTestCase {
 
         XCTAssertEqual(engine.status, .running)
         XCTAssertEqual(transport.sentEndpoints, [
-            TransportEndpoint(host: "relay.example.com", port: 11010)
+            TransportEndpoint(scheme: "tcp", host: "relay.example.com", port: 11010)
         ])
     }
 
