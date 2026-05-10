@@ -48,11 +48,19 @@ class VPNManager: ObservableObject, VPNControlling {
                 return
             }
             
-            guard let existingManager = managers?.first else {
+            let managers = managers ?? []
+            let descriptors = managers.map {
+                VPNProfileDescriptor(
+                    localizedDescription: $0.localizedDescription,
+                    providerBundleIdentifier: ($0.protocolConfiguration as? NETunnelProviderProtocol)?.providerBundleIdentifier
+                )
+            }
+            guard let selectedIndex = VPNProfileSelection.firstMatchingProfileIndex(in: descriptors) else {
                 self.setupVPNProfile()
                 return
             }
 
+            let existingManager = managers[selectedIndex]
             self.manager = existingManager
             self.updateStatusSync()
             self.isReady = true
@@ -77,8 +85,7 @@ class VPNManager: ObservableObject, VPNControlling {
         manager.localizedDescription = "Spotier VPN"
         
         let protocolConfiguration = NETunnelProviderProtocol()
-        let extensionBundleID = "com.alick.spotier.SpotierNE"
-        protocolConfiguration.providerBundleIdentifier = extensionBundleID
+        protocolConfiguration.providerBundleIdentifier = VPNProfileSelection.expectedProviderBundleIdentifier
         protocolConfiguration.serverAddress = "Spotier"
         
         manager.protocolConfiguration = protocolConfiguration
