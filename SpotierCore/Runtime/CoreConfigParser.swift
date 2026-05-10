@@ -26,6 +26,7 @@ enum CoreConfigParser {
         var networkIdentity: [String: String] = [:]
         var flags: [String: String] = [:]
         var peers: [String] = []
+        var proxyNetworkCIDRs: [String] = []
         var currentSection = ""
 
         for rawLine in toml.components(separatedBy: .newlines) {
@@ -61,6 +62,10 @@ enum CoreConfigParser {
                 if key == "uri" {
                     peers.append(value)
                 }
+            case "proxy_network":
+                if key == "cidr" {
+                    proxyNetworkCIDRs.append(value)
+                }
             default:
                 break
             }
@@ -76,7 +81,7 @@ enum CoreConfigParser {
 
         let listeners = parseStringArray(topLevel["listeners"] ?? "")
         let mappedListeners = parseStringArray(topLevel["mapped_listeners"] ?? "")
-        let advertisedRoutes = parseStringArray(topLevel["routes"] ?? "")
+        let advertisedRoutes = parseStringArray(topLevel["routes"] ?? "") + proxyNetworkCIDRs
         let exitNodes = parseStringArray(topLevel["exit_nodes"] ?? "")
         let mtu = Int(flags["mtu"] ?? topLevel["mtu"] ?? "") ?? 1380
         let enableExitNode = boolValue(flags["enable_exit_node"] ?? topLevel["enable_exit_node"])

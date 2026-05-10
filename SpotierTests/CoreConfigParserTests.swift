@@ -93,6 +93,28 @@ final class CoreConfigParserTests: XCTestCase {
         XCTAssertTrue(result.configuration.disableUDPHolePunching)
     }
 
+    func testParsesProxyNetworkCIDRsAsAdvertisedRoutes() throws {
+        let result = try CoreConfigParser.parse("""
+        routes = ["10.88.0.0/16"]
+
+        [network_identity]
+        network_name = "easytier"
+        network_secret = "secret"
+
+        [[proxy_network]]
+        cidr = "192.168.1.0/24"
+
+        [[proxy_network]]
+        cidr = "172.16.0.0/16"
+        """)
+
+        XCTAssertEqual(result.configuration.advertisedRoutes, [
+            "10.88.0.0/16",
+            "192.168.1.0/24",
+            "172.16.0.0/16"
+        ])
+    }
+
     func testDefaultsMTUTo1380() throws {
         let result = try CoreConfigParser.parse("""
         [network_identity]
