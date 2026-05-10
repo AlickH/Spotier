@@ -119,7 +119,7 @@
 - [x] Add `MeshEngineEvent` with statusChanged, peerChanged, routeChanged, logLine, fatalError.
 - [x] Add `MeshEngine` with `start(configuration:)`, `stop()`, `sendProviderCommand(_:)`, and event stream.
 - [x] Write tests for config validation using only fields currently accepted by Spotier.
-- [ ] Run the config tests and confirm they pass. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Run the config tests and confirm they pass.
 - [x] Commit.
 
 ### Task 3: Replace TOML Parsing Boundary
@@ -138,7 +138,7 @@
 - [x] Test MTU parsing.
 - [x] Test MagicDNS fields.
 - [x] Test rejection of missing network identity.
-- [ ] Run parser tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Run parser tests.
 - [x] Commit.
 
 ### Task 4: Implement Stable Identity Types
@@ -158,7 +158,7 @@
 - [x] Test deterministic identity generation with fixed seed.
 - [x] Test different secrets produce different identities.
 - [x] Test persisted seed reuse.
-- [ ] Run identity tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Run identity tests.
 - [x] Commit.
 
 ### Task 5: Define Wire Frames
@@ -179,7 +179,7 @@
 - [x] Test round-trip encoding for every control message.
 - [x] Test rejection of truncated frames.
 - [x] Test rejection of invalid payload length.
-- [ ] Run frame codec tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Run frame codec tests.
 - [x] Commit.
 
 ### Task 6: Implement Session Encryption
@@ -200,7 +200,7 @@
 - [x] Test wrong network secret fails authentication.
 - [x] Test replay rejection.
 - [x] Test tamper rejection.
-- [ ] Run session crypto tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Run session crypto tests.
 - [x] Commit.
 
 ### Task 7: Implement UDP Transport
@@ -219,7 +219,7 @@
 - [x] Test endpoint parsing.
 - [x] Test local UDP send/receive on loopback.
 - [x] Test invalid frame does not crash the transport.
-- [ ] Run UDP transport tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Run UDP transport tests.
 - [x] Commit.
 
 ### Task 8: Implement Relay Transport
@@ -237,7 +237,7 @@
 - [x] Support relaying encrypted data frames.
 - [x] Test length-prefixed frame round trip using a local listener.
 - [x] Test relay reconnect is initiated only by explicit transport restart.
-- [ ] Run relay transport tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Run relay transport tests.
 - [x] Commit.
 
 ### Task 9: Implement Peer Store And Session Lifecycle
@@ -259,7 +259,7 @@
 - [x] Test peer addition from hello.
 - [x] Test session establishment.
 - [x] Test stale peer removal.
-- [ ] Run peer manager tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Run peer manager tests.
 - [x] Commit.
 
 ### Task 10: Implement Routing
@@ -278,7 +278,7 @@
 - [x] Test direct peer host route.
 - [x] Test subnet route selection.
 - [x] Test route removal when peer is removed.
-- [ ] Run route table tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Run route table tests.
 - [x] Commit.
 
 ### Task 11: Implement IP Packet Classification
@@ -297,7 +297,7 @@
 - [x] Test IPv4 classification.
 - [x] Test IPv6 classification.
 - [x] Test unknown route produces drop.
-- [ ] Run packet classifier tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Run packet classifier tests.
 - [x] Commit.
 
 ### Task 12: Wire Packet Tunnel To MeshEngine
@@ -316,7 +316,7 @@
 - [x] Remove calls to `EasyTierCore.setTunFd`.
 - [x] Keep `setTunnelNetworkSettings` as the only network settings path.
 - [x] Test `PacketTunnelIO` with a fake packet flow abstraction if the target cannot instantiate `NEPacketTunnelFlow`.
-- [ ] Run packet tunnel IO tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Run packet tunnel IO tests.
 - [x] Commit.
 
 ### Task 13: Replace Running Info
@@ -337,7 +337,7 @@
 - [x] Serve `running_info` provider message from Swift core.
 - [x] Remove `EasyTierCore.getRunningInfo`.
 - [x] Update tests for the new snapshot source.
-- [ ] Run running info snapshot tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Run running info snapshot tests.
 - [x] Commit.
 
 ### Task 14: Implement NAT Discovery And Hole Punch Coordination
@@ -357,7 +357,7 @@
 - [x] Test STUN response parsing using fixture bytes.
 - [x] Test endpoint candidate exchange.
 - [x] Test direct transport promotion.
-- [ ] Run hole punch coordinator tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Run hole punch coordinator tests.
 - [x] Commit.
 
 ### Task 15: Implement Relay Server Compatibility Contract
@@ -372,7 +372,7 @@
 - [x] Document Spotier-owned relay protocol as Spotier protocol v1.
 - [x] Add contract tests from local relay fixtures.
 - [x] Do not support both relay protocols in the same implementation pass.
-- [ ] Run relay protocol contract tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Run relay protocol contract tests.
 - [x] Commit the relay contract before coding protocol-specific behavior.
 
 ### Task 16: Replace Host App FFI Usage
@@ -390,7 +390,7 @@
 - [x] Keep provider IPC through `sendProviderMessage`.
 - [x] Remove `SwiftierCore.swift` from project target membership.
 - [x] Delete `SpotierNE/SwiftierCore.swift`.
-- [ ] Run app lifecycle tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Run app lifecycle tests.
 - [x] Commit.
 
 ### Task 17: Remove Rust Build Inputs
@@ -460,7 +460,7 @@
 - [ ] Confirm no Rust symbols appear in crash logs or runtime logs. Current connected TestFlight provider logs still contain Rust; Debug provider does not pass NetworkExtension signature validation yet.
 - [ ] Confirm provider IPC returns running info. Blocked until the Debug provider can stay connected.
 - [ ] Confirm app dashboard renders peer and route state. Blocked until the Debug provider can stay connected.
-- [ ] Commit final verification fixes.
+- [x] Commit final verification fixes.
 
 ## Completion Checklist
 
