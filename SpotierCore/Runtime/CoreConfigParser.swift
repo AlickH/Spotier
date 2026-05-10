@@ -77,13 +77,14 @@ enum CoreConfigParser {
         let listeners = parseStringArray(topLevel["listeners"] ?? "")
         let advertisedRoutes = parseStringArray(topLevel["routes"] ?? "")
         let mtu = Int(flags["mtu"] ?? topLevel["mtu"] ?? "") ?? 1380
-        let hints = configHints(topLevel: topLevel, flags: flags, mtu: mtu)
+        let disableIPv6 = boolValue(flags["disable_ipv6"] ?? topLevel["disable_ipv6"])
+        let hints = configHints(topLevel: topLevel, flags: flags, mtu: mtu, disableIPv6: disableIPv6)
 
         let configuration = MeshEngineConfiguration(
             networkName: networkName,
             networkSecret: networkSecret,
             virtualIPv4: topLevel["ipv4"],
-            virtualIPv6: topLevel["ipv6"],
+            virtualIPv6: disableIPv6 ? nil : topLevel["ipv6"],
             peers: peers,
             listeners: listeners,
             advertisedRoutes: advertisedRoutes,
@@ -97,7 +98,8 @@ enum CoreConfigParser {
     private static func configHints(
         topLevel: [String: String],
         flags: [String: String],
-        mtu: Int
+        mtu: Int,
+        disableIPv6: Bool
     ) -> CoreConfigHints {
         var hints = CoreConfigHints()
         hints.mtu = mtu
@@ -112,7 +114,8 @@ enum CoreConfigParser {
             }
         }
 
-        if let ipv6 = topLevel["ipv6"],
+        if !disableIPv6,
+           let ipv6 = topLevel["ipv6"],
            let parsed = parseIPv6CIDR(ipv6) {
             hints.ipv6 = parsed.address
             hints.ipv6Prefix = parsed.prefixLength
@@ -132,6 +135,10 @@ enum CoreConfigParser {
         }
 
         return hints
+    }
+
+    private static func boolValue(_ value: String?) -> Bool {
+        value?.lowercased() == "true"
     }
 
     private static func unquote(_ value: String) -> String {

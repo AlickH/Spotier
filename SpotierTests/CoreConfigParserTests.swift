@@ -52,6 +52,23 @@ final class CoreConfigParserTests: XCTestCase {
         XCTAssertEqual(result.hints.ipv6Prefix, 64)
     }
 
+    func testDisableIPv6ClearsVirtualIPv6() throws {
+        let result = try CoreConfigParser.parse("""
+        ipv6 = "fd00::4/64"
+
+        [network_identity]
+        network_name = "easytier"
+        network_secret = "secret"
+
+        [flags]
+        disable_ipv6 = true
+        """)
+
+        XCTAssertNil(result.configuration.virtualIPv6)
+        XCTAssertNil(result.hints.ipv6)
+        XCTAssertNil(result.hints.ipv6Prefix)
+    }
+
     func testDefaultsMTUTo1380() throws {
         let result = try CoreConfigParser.parse("""
         [network_identity]
