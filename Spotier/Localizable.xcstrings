@@ -153,17 +153,6 @@
         }
       }
     },
-    "SOCKS5 服务器" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "SOCKS5 Proxy"
-          }
-        }
-      }
-    },
     "Spotier 已是最新版本" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -200,12 +189,6 @@
         }
       }
     },
-    "tcp://..." : {
-
-    },
-    "tcp://public.easytier.top:11010" : {
-
-    },
     "TRACE" : {
 
     },
@@ -230,17 +213,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Upload"
-          }
-        }
-      }
-    },
-    "VPN 门户配置" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "VPN Portal"
           }
         }
       }
@@ -588,17 +560,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Node is an exit."
-          }
-        }
-      }
-    },
-    "允许转发所有对等节点的 RPC 数据包，即使对等节点不在转发网络白名单中。这可以帮助白名单外网络中的对等节点建立 P2P 连接。" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Forward RPC for all."
           }
         }
       }
@@ -1024,17 +985,6 @@
         }
       }
     },
-    "如：tcp://1.1.1.1:11010" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "e.g. tcp://1.1.1.1:11010"
-          }
-        }
-      }
-    },
     "存储位置: iCloud Drive" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1357,17 +1307,6 @@
         }
       }
     },
-    "手动指定监听器的公网地址，其他节点可以使用该地址连接到本节点。例如：tcp://123.123.123.123:11223，可以指定多个。" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Manually specify public addresses for listeners so other peers can connect directly."
-          }
-        }
-      }
-    },
     "接收" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1617,17 +1556,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Add Addr"
-          }
-        }
-      }
-    },
-    "添加端口转发" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add Port"
           }
         }
       }
@@ -1995,17 +1923,6 @@
         }
       }
     },
-    "端口转发" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Forwarding"
-          }
-        }
-      }
-    },
     "系统转发" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -2068,17 +1985,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Networking"
-          }
-        }
-      }
-    },
-    "网络白名单" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Whitelist"
           }
         }
       }
@@ -2189,28 +2095,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Virtual IP"
-          }
-        }
-      }
-    },
-    "覆盖 DNS" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Override DNS"
-          }
-        }
-      }
-    },
-    "覆盖系统 DNS。如果也同时启用了魔法 DNS，需要手动添加。" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Override system DNS. (Magic DNS manual add)."
           }
         }
       }
