@@ -30,6 +30,10 @@ struct PacketRouter {
     }
 
     func route(_ packet: IPPacket) -> PacketRouteDecision {
+        if shouldDropIPv6LinkLocalSource(packet) {
+            return .drop
+        }
+
         let destination = packet.destinationAddress
 
         if destination == addressPart(localIPv4) || destination.lowercased() == addressPart(localIPv6)?.lowercased() {
@@ -64,6 +68,14 @@ struct PacketRouter {
             }
         }
         return nil
+    }
+
+    private func shouldDropIPv6LinkLocalSource(_ packet: IPPacket) -> Bool {
+        guard case .ipv6(let ipv6) = packet,
+              isIPv6LinkLocal(ipv6.sourceAddress) else {
+            return false
+        }
+        return ipv6.sourceAddress.lowercased() != addressPart(localIPv6)?.lowercased()
     }
 
     private func isSameIPv4Network(_ address: String, localCIDR: String?) -> Bool {
@@ -101,6 +113,11 @@ struct PacketRouter {
 
         let mask = UInt8.max << (8 - remainingBits)
         return (localBytes[fullBytes] & mask) == (addressBytes[fullBytes] & mask)
+    }
+
+    private func isIPv6LinkLocal(_ address: String) -> Bool {
+        guard let bytes = parseIPv6(address) else { return false }
+        return bytes[0] == 0xFE && (bytes[1] & 0xC0) == 0x80
     }
 
     private func parseIPv4(_ address: String) -> UInt32? {

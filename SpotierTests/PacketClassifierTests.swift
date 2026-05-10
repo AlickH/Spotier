@@ -224,6 +224,39 @@ final class PacketClassifierTests: XCTestCase {
         XCTAssertEqual(router.route(packet), .drop)
     }
 
+    func testIPv6LinkLocalSourceIsDroppedUnlessItIsLocalAddress() throws {
+        let remoteLinkLocalPacket = try PacketClassifier.parse(ipv6Packet(
+            source: [0xfe80, 0, 0, 0, 0, 0, 0, 8],
+            destination: [0xfd00, 0, 0, 0, 0, 0, 0, 2],
+            nextHeader: 17,
+            payload: []
+        ))
+        let localLinkLocalPacket = try PacketClassifier.parse(ipv6Packet(
+            source: [0xfe80, 0, 0, 0, 0, 0, 0, 1],
+            destination: [0xfd00, 0, 0, 0, 0, 0, 0, 2],
+            nextHeader: 17,
+            payload: []
+        ))
+        var table = RouteTable()
+        table.apply(RouteUpdate(
+            peerID: PeerID(2),
+            ipv4Address: nil,
+            ipv6Address: "fd00:0:0:0:0:0:0:2",
+            nextHopPeerID: PeerID(2),
+            cost: 1,
+            proxyCIDRs: []
+        ))
+
+        let router = PacketRouter(
+            routeTable: table,
+            localIPv4: nil,
+            localIPv6: "fe80:0:0:0:0:0:0:1/64"
+        )
+
+        XCTAssertEqual(router.route(remoteLinkLocalPacket), .drop)
+        XCTAssertEqual(router.route(localLinkLocalPacket), .peer(PeerID(2)))
+    }
+
     func testRejectsNonIPPacket() {
         XCTAssertThrowsError(try PacketClassifier.parse(Data([0x10, 0x00]))) { error in
             XCTAssertEqual(error as? IPPacketError, .nonIPPacket)
