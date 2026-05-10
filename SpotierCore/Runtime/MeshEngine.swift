@@ -54,6 +54,7 @@ final class MeshEngine {
         )
 
         do {
+            try validateConfiguredPeers(configuration.peers)
             if let injectedTransport {
                 try await injectedTransport.start()
                 transport = injectedTransport
@@ -65,7 +66,6 @@ final class MeshEngine {
                 throw TransportError.unsupportedListenerScheme
             }
             startTransportReader()
-            try validateConfiguredPeers(configuration.peers)
             try await sendBootstrapHello(to: configuration.peers)
             setStatus(.running)
         } catch {

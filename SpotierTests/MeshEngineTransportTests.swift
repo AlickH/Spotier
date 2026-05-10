@@ -79,6 +79,7 @@ final class MeshEngineTransportTests: XCTestCase {
         } catch {
             XCTAssertEqual(error as? TransportError, .unsupportedPeerScheme)
             XCTAssertTrue(engine.events.contains(.fatalError("unsupportedPeerScheme")))
+            XCTAssertFalse(transport.didStart)
             XCTAssertTrue(transport.sentEndpoints.isEmpty)
         }
     }
@@ -122,9 +123,12 @@ private final class RecordingTransport: Transport {
         continuation.finish()
     }
 
+    private(set) var didStart = false
     private(set) var sentEndpoints: [TransportEndpoint] = []
 
-    func start() async throws {}
+    func start() async throws {
+        didStart = true
+    }
 
     func stop() async {}
 
