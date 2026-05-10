@@ -19,6 +19,7 @@ final class MeshEngine {
     private var advertisedRoutePeers = Set<PeerID>()
     private var endpointCandidatePeers = Set<PeerID>()
     private var peerTrafficStats: [PeerID: RunningInfoSnapshot.PeerConnectionStats] = [:]
+    private var pendingLatencyPings: [PeerID: Date] = [:]
 
     init(transport: (any Transport)? = nil, deviceSeed: Data = Data("spotier.swift.core.device".utf8)) {
         injectedTransport = transport
@@ -85,6 +86,7 @@ final class MeshEngine {
         peerStore = PeerStore()
         routeTable = RouteTable()
         peerTrafficStats.removeAll()
+        pendingLatencyPings.removeAll()
         nextSequence = 1
         advertisedRoutePeers.removeAll()
         endpointCandidatePeers.removeAll()
@@ -187,6 +189,9 @@ final class MeshEngine {
             case .control:
                 let responses = try peerManager?.receive(inbound) ?? []
                 syncPeerState()
+                if case .control(.peerPong) = inbound.frame.payload {
+                    recordLatencyPong(from: inbound.frame.sender)
+                }
                 if case .control(.routeUpdate(let payload)) = inbound.frame.payload {
                     let update = try RouteUpdate(wireData: payload, sender: inbound.frame.sender)
                     routeTable.apply(update)
@@ -202,6 +207,7 @@ final class MeshEngine {
                 }
                 try await sendEndpointCandidateIfNeeded(to: inbound.frame.sender, endpoint: inbound.remoteEndpoint)
                 try await sendAdvertisedRoutesIfNeeded(to: inbound.frame.sender, endpoint: inbound.remoteEndpoint)
+                try await sendLatencyPingIfNeeded(to: inbound.frame.sender, endpoint: inbound.remoteEndpoint)
             case .data(let packet):
                 guard let session = peerManager?.session(for: inbound.frame.sender),
                       let crypto = session.crypto else {
@@ -325,6 +331,34 @@ final class MeshEngine {
         )
         try await transport?.send(frame, to: endpoint)
         recordSentPacket(to: peerID, byteCount: packet.data.count)
+    }
+
+    private func sendLatencyPingIfNeeded(to peerID: PeerID, endpoint: TransportEndpoint) async throws {
+        guard peerManager?.session(for: peerID)?.health == .established,
+              pendingLatencyPings[peerID] == nil,
+              (peerTrafficStats[peerID]?.latencyUs ?? 0) == 0,
+              let localIdentity else {
+            return
+        }
+
+        let frame = CoreFrame(
+            type: .control,
+            sender: localIdentity.peerID,
+            receiver: peerID,
+            sequence: nextSequence,
+            payload: .control(.peerPing)
+        )
+        pendingLatencyPings[peerID] = Date()
+        nextSequence += 1
+        try await transport?.send(frame, to: endpoint)
+    }
+
+    private func recordLatencyPong(from peerID: PeerID) {
+        guard let startedAt = pendingLatencyPings.removeValue(forKey: peerID) else { return }
+        let latencyUs = max(1, Int(Date().timeIntervalSince(startedAt) * 1_000_000))
+        var stats = peerTrafficStats[peerID] ?? RunningInfoSnapshot.PeerConnectionStats()
+        stats.latencyUs = latencyUs
+        peerTrafficStats[peerID] = stats
     }
 
     private func recordSentPacket(to peerID: PeerID, byteCount: Int) {
