@@ -22,17 +22,29 @@ struct MagicDNSResponder {
     }
 
     func response(to packet: Data) -> Data? {
-        guard packet.count >= 28,
+        guard packet.count >= 20,
               packet[0] >> 4 == 4,
-              packet[9] == 17,
               packet.ipv4String(at: 16) == resolverIPv4 else {
             return nil
         }
 
         let headerLength = Int(packet[0] & 0x0F) * 4
-        guard headerLength >= 20, packet.count >= headerLength + 8 else {
+        guard headerLength >= 20, packet.count >= headerLength else {
             return nil
         }
+
+        if packet[9] == 17 {
+            return dnsResponse(to: packet, headerLength: headerLength)
+        }
+        if packet[9] == 1 {
+            return icmpEchoResponse(to: packet, headerLength: headerLength)
+        }
+        return nil
+    }
+
+    private func dnsResponse(to packet: Data, headerLength: Int) -> Data? {
+        guard packet.count >= headerLength + 8 else { return nil }
+
         let sourcePort = packet.readUInt16(at: headerLength)
         let destinationPort = packet.readUInt16(at: headerLength + 2)
         guard destinationPort == 53 else { return nil }
@@ -64,6 +76,28 @@ struct MagicDNSResponder {
             destination: packet.ipv4String(at: 12),
             protocolNumber: 17,
             payload: udpPayload
+        )
+    }
+
+    private func icmpEchoResponse(to packet: Data, headerLength: Int) -> Data? {
+        guard packet.count >= headerLength + 8,
+              packet[headerLength] == 8,
+              packet[headerLength + 1] == 0 else {
+            return nil
+        }
+
+        var icmpPayload = packet.subdata(in: headerLength..<packet.count)
+        icmpPayload[0] = 0
+        icmpPayload[2] = 0
+        icmpPayload[3] = 0
+        let checksum = internetChecksum(icmpPayload)
+        icmpPayload[2] = UInt8(checksum >> 8)
+        icmpPayload[3] = UInt8(checksum & 0xFF)
+        return ipv4Packet(
+            source: resolverIPv4,
+            destination: packet.ipv4String(at: 12),
+            protocolNumber: 1,
+            payload: icmpPayload
         )
     }
 
@@ -160,9 +194,18 @@ struct MagicDNSResponder {
     }
 
     private func ipv4HeaderChecksum(_ header: Data) -> UInt16 {
+        internetChecksum(header)
+    }
+
+    private func internetChecksum(_ data: Data) -> UInt16 {
         var sum: UInt32 = 0
-        for offset in stride(from: 0, to: 20, by: 2) {
-            sum += UInt32(header.readUInt16(at: offset))
+        var offset = 0
+        while offset + 1 < data.count {
+            sum += UInt32(data.readUInt16(at: offset))
+            offset += 2
+        }
+        if offset < data.count {
+            sum += UInt32(data[offset]) << 8
         }
         while sum > 0xFFFF {
             sum = (sum & 0xFFFF) + (sum >> 16)
