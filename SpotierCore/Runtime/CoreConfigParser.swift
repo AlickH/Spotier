@@ -75,6 +75,7 @@ enum CoreConfigParser {
         }
 
         let listeners = parseStringArray(topLevel["listeners"] ?? "")
+        let mappedListeners = parseStringArray(topLevel["mapped_listeners"] ?? "")
         let advertisedRoutes = parseStringArray(topLevel["routes"] ?? "")
         let mtu = Int(flags["mtu"] ?? topLevel["mtu"] ?? "") ?? 1380
         let disableIPv6 = boolValue(flags["disable_ipv6"] ?? topLevel["disable_ipv6"])
@@ -90,6 +91,7 @@ enum CoreConfigParser {
             virtualIPv6: disableIPv6 ? nil : topLevel["ipv6"],
             peers: peers,
             listeners: listeners,
+            mappedListeners: mappedListeners,
             advertisedRoutes: advertisedRoutes,
             mtu: mtu,
             disableP2P: disableP2P,

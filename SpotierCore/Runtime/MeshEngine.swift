@@ -243,7 +243,8 @@ final class MeshEngine {
     }
 
     private func configuredUDPEndpoint() throws -> TransportEndpoint? {
-        guard let listener = configuration?.listeners.first(where: { URL(string: $0)?.scheme == "udp" }) else {
+        let candidates = (configuration?.mappedListeners ?? []) + (configuration?.listeners ?? [])
+        guard let listener = candidates.first(where: { URL(string: $0)?.scheme == "udp" }) else {
             return nil
         }
         return try TransportEndpoint(urlString: listener)

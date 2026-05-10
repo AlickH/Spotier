@@ -264,6 +264,46 @@ final class MeshIntegrationTests: XCTestCase {
         )
     }
 
+    func testMappedUDPListenerIsPublishedAsEndpointCandidate() async throws {
+        let transportA = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19144))
+        let transportB = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19145))
+        transportA.connect(to: transportB)
+        let engineA = MeshEngine(transport: transportA, deviceSeed: Data(repeating: 1, count: 32))
+        let engineB = MeshEngine(transport: transportB, deviceSeed: Data(repeating: 2, count: 32))
+        defer {
+            Task {
+                await engineA.stop()
+                await engineB.stop()
+            }
+        }
+
+        try await engineA.start(configuration: MeshEngineConfiguration(
+            networkName: "easytier",
+            networkSecret: "secret",
+            virtualIPv4: "10.0.0.1/24",
+            listeners: ["udp://127.0.0.1:20144"],
+            mappedListeners: ["udp://198.51.100.9:21010"],
+            mtu: 1380
+        ))
+        try await engineB.start(configuration: MeshEngineConfiguration(
+            networkName: "easytier",
+            networkSecret: "secret",
+            virtualIPv4: "10.0.0.2/24",
+            listeners: ["udp://127.0.0.1:20145"],
+            mtu: 1380
+        ))
+        try await exchangeHello(from: engineB, transport: transportB, to: engineA, endpoint: transportA.endpoint)
+
+        let peerID = try XCTUnwrap(engineA.localIdentity?.peerID)
+        try await waitUntil(
+            engineB.peerStore.peer(id: peerID)?.knownEndpoints.contains(TransportEndpoint(host: "198.51.100.9", port: 21010)) == true,
+            timeout: .milliseconds(500)
+        )
+        XCTAssertFalse(
+            engineB.peerStore.peer(id: peerID)?.knownEndpoints.contains(TransportEndpoint(host: "127.0.0.1", port: 20144)) == true
+        )
+    }
+
     func testDisabledUDPHolePunchingDoesNotSendEndpointCandidateAfterSessionEstablishes() async throws {
         let transportA = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19142))
         let transportB = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19143))

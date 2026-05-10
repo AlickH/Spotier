@@ -8,6 +8,7 @@ struct MeshEngineConfiguration: Equatable {
     var virtualIPv6: String?
     var peers: [String]
     var listeners: [String]
+    var mappedListeners: [String]
     var advertisedRoutes: [String]
     var mtu: Int
     var disableP2P: Bool
@@ -21,6 +22,7 @@ struct MeshEngineConfiguration: Equatable {
         virtualIPv6: String? = nil,
         peers: [String] = [],
         listeners: [String] = [],
+        mappedListeners: [String] = [],
         advertisedRoutes: [String] = [],
         mtu: Int = 1380,
         disableP2P: Bool = false,
@@ -33,6 +35,7 @@ struct MeshEngineConfiguration: Equatable {
         self.virtualIPv6 = virtualIPv6
         self.peers = peers
         self.listeners = listeners
+        self.mappedListeners = mappedListeners
         self.advertisedRoutes = advertisedRoutes
         self.mtu = mtu
         self.disableP2P = disableP2P
