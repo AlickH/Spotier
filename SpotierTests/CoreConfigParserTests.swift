@@ -9,6 +9,7 @@ final class CoreConfigParserTests: XCTestCase {
         dhcp = false
         listeners = ["tcp://0.0.0.0:11010", "udp://0.0.0.0:11010"]
         ipv4 = "10.126.126.4/24"
+        routes = ["192.168.50.0/24", "10.88.0.0/16"]
 
         [network_identity]
         network_name = "easytier"
@@ -31,6 +32,7 @@ final class CoreConfigParserTests: XCTestCase {
             "udp://0.0.0.0:11010"
         ])
         XCTAssertEqual(result.configuration.mtu, 1380)
+        XCTAssertEqual(result.configuration.advertisedRoutes, ["192.168.50.0/24", "10.88.0.0/16"])
         XCTAssertEqual(result.hints.ipv4, "10.126.126.4")
         XCTAssertEqual(result.hints.subnet, "255.255.255.0")
         XCTAssertTrue(result.hints.magicDNS)

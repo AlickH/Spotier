@@ -44,6 +44,39 @@ struct RouteTable: Equatable {
         routes.removeAll { $0.ownerPeerID == peerID }
     }
 
+    mutating func applyDirectPeerRoute(
+        peerID: PeerID,
+        ipv4Address: String?,
+        ipv6Address: String?,
+        nextHopPeerID: PeerID,
+        cost: Int,
+        now: Date = Date()
+    ) {
+        routes.removeAll { $0.ownerPeerID == peerID && $0.kind == .host }
+
+        if let ipv4Address {
+            routes.append(VirtualRoute(
+                destination: hostDestination(from: ipv4Address, defaultPrefix: 32),
+                ownerPeerID: peerID,
+                nextHopPeerID: nextHopPeerID,
+                cost: cost,
+                updatedAt: now,
+                kind: .host
+            ))
+        }
+
+        if let ipv6Address {
+            routes.append(VirtualRoute(
+                destination: hostDestination(from: ipv6Address, defaultPrefix: 128),
+                ownerPeerID: peerID,
+                nextHopPeerID: nextHopPeerID,
+                cost: cost,
+                updatedAt: now,
+                kind: .host
+            ))
+        }
+    }
+
     func bestRoute(for address: String) -> VirtualRoute? {
         routes
             .filter { routeContains($0.destination, address: address) }

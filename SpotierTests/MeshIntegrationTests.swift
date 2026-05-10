@@ -183,6 +183,37 @@ final class MeshIntegrationTests: XCTestCase {
         XCTAssertEqual((json?["peer_route_pairs"] as? [[String: Any]])?.count, 0)
     }
 
+    func testAdvertisedRoutesAreSentAfterSessionEstablishes() async throws {
+        let transportA = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19150))
+        let transportB = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19151))
+        transportA.connect(to: transportB)
+        let engineA = MeshEngine(transport: transportA, deviceSeed: Data(repeating: 1, count: 32))
+        let engineB = MeshEngine(transport: transportB, deviceSeed: Data(repeating: 2, count: 32))
+        defer {
+            Task {
+                await engineA.stop()
+                await engineB.stop()
+            }
+        }
+
+        try await engineA.start(configuration: MeshEngineConfiguration(
+            networkName: "easytier",
+            networkSecret: "secret",
+            virtualIPv4: "10.0.0.1/24",
+            virtualIPv6: "fd00:0:0:0:0:0:0:1",
+            advertisedRoutes: ["192.168.55.0/24"],
+            mtu: 1380
+        ))
+        try await engineB.start(configuration: configuration(ipv4: "10.0.0.2/24", ipv6: "fd00:0:0:0:0:0:0:2"))
+        try await exchangeHello(from: engineA, transport: transportA, to: engineB, endpoint: transportB.endpoint)
+        try await waitUntil(engineA.sessionEstablished(with: engineB), timeout: .milliseconds(500))
+        try await waitUntil(engineB.sessionEstablished(with: engineA), timeout: .milliseconds(500))
+        try await waitUntil(engineB.routeTable.bestRoute(for: "192.168.55.8") != nil, timeout: .milliseconds(500))
+
+        XCTAssertEqual(engineB.routeTable.bestRoute(for: "192.168.55.8")?.ownerPeerID, engineA.localIdentity?.peerID)
+        XCTAssertEqual(engineB.routeTable.bestRoute(for: "192.168.55.8")?.kind, .subnetProxy)
+    }
+
     private func routeUpdatePayload(
         ipv4Address: String?,
         ipv6Address: String?,

@@ -75,6 +75,7 @@ enum CoreConfigParser {
         }
 
         let listeners = parseStringArray(topLevel["listeners"] ?? "")
+        let advertisedRoutes = parseStringArray(topLevel["routes"] ?? "")
         let mtu = Int(flags["mtu"] ?? topLevel["mtu"] ?? "") ?? 1380
         let hints = configHints(topLevel: topLevel, flags: flags, mtu: mtu)
 
@@ -85,6 +86,7 @@ enum CoreConfigParser {
             virtualIPv6: topLevel["ipv6"],
             peers: peers,
             listeners: listeners,
+            advertisedRoutes: advertisedRoutes,
             mtu: mtu
         )
 

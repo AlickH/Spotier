@@ -7,6 +7,7 @@ struct MeshEngineConfiguration: Equatable {
     var virtualIPv6: String?
     var peers: [String]
     var listeners: [String]
+    var advertisedRoutes: [String]
     var mtu: Int
 
     init(
@@ -16,6 +17,7 @@ struct MeshEngineConfiguration: Equatable {
         virtualIPv6: String? = nil,
         peers: [String] = [],
         listeners: [String] = [],
+        advertisedRoutes: [String] = [],
         mtu: Int = 1380
     ) {
         self.networkName = networkName
@@ -24,6 +26,7 @@ struct MeshEngineConfiguration: Equatable {
         self.virtualIPv6 = virtualIPv6
         self.peers = peers
         self.listeners = listeners
+        self.advertisedRoutes = advertisedRoutes
         self.mtu = mtu
     }
 

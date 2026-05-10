@@ -16,6 +16,7 @@ final class MeshEngine {
     private var peerManager: PeerManager?
     private var transportReadTask: Task<Void, Never>?
     private var nextSequence: UInt64 = 1
+    private var advertisedRoutePeers = Set<PeerID>()
 
     init(transport: (any Transport)? = nil, deviceSeed: Data = Data("spotier.swift.core.device".utf8)) {
         injectedTransport = transport
@@ -81,6 +82,7 @@ final class MeshEngine {
         peerStore = PeerStore()
         routeTable = RouteTable()
         nextSequence = 1
+        advertisedRoutePeers.removeAll()
         setStatus(.stopped)
     }
 
@@ -176,6 +178,7 @@ final class MeshEngine {
                 for response in responses {
                     try await transport?.send(response, to: inbound.remoteEndpoint)
                 }
+                try await sendAdvertisedRoutesIfNeeded(to: inbound.frame.sender, endpoint: inbound.remoteEndpoint)
             case .data(let packet):
                 guard let session = peerManager?.session(for: inbound.frame.sender),
                       let crypto = session.crypto else {
@@ -190,6 +193,36 @@ final class MeshEngine {
         } catch {
             events.append(.logLine("Dropped inbound frame"))
         }
+    }
+
+    private func sendAdvertisedRoutes(to peerID: PeerID, endpoint: TransportEndpoint) async throws {
+        guard let localIdentity, let configuration, !configuration.advertisedRoutes.isEmpty else { return }
+        let update = RouteUpdate(
+            peerID: localIdentity.peerID,
+            ipv4Address: localIdentity.virtualIPv4,
+            ipv6Address: localIdentity.virtualIPv6,
+            nextHopPeerID: localIdentity.peerID,
+            cost: 1,
+            proxyCIDRs: configuration.advertisedRoutes
+        )
+        let frame = CoreFrame(
+            type: .control,
+            sender: localIdentity.peerID,
+            receiver: peerID,
+            sequence: nextSequence,
+            payload: .control(.routeUpdate(try update.wireData()))
+        )
+        nextSequence += 1
+        try await transport?.send(frame, to: endpoint)
+    }
+
+    private func sendAdvertisedRoutesIfNeeded(to peerID: PeerID, endpoint: TransportEndpoint) async throws {
+        guard advertisedRoutePeers.contains(peerID) == false,
+              peerManager?.session(for: peerID)?.health == .established else {
+            return
+        }
+        try await sendAdvertisedRoutes(to: peerID, endpoint: endpoint)
+        advertisedRoutePeers.insert(peerID)
     }
 
     private func syncPeerState() {

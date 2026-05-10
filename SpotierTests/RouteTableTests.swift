@@ -87,4 +87,31 @@ final class RouteTableTests: XCTestCase {
 
         XCTAssertEqual(table.bestRoute(for: "10.4.0.2")?.nextHopPeerID, PeerID(4))
     }
+
+    func testRouteCalculatorPreservesPeerSubnetProxyRoutes() {
+        var table = RouteTable()
+        let peer = Peer(
+            id: PeerID(5),
+            hostname: "peer",
+            virtualIPv4: "10.5.0.2",
+            virtualIPv6: nil,
+            publicKey: Data(),
+            knownEndpoints: [],
+            lastSeen: Date()
+        )
+        table.apply(RouteUpdate(
+            peerID: peer.id,
+            ipv4Address: nil,
+            ipv6Address: nil,
+            nextHopPeerID: peer.id,
+            cost: 1,
+            proxyCIDRs: ["192.168.55.0/24"]
+        ))
+
+        RouteCalculator.apply(peer: peer, to: &table)
+
+        XCTAssertEqual(table.bestRoute(for: "10.5.0.2")?.ownerPeerID, peer.id)
+        XCTAssertEqual(table.bestRoute(for: "192.168.55.8")?.ownerPeerID, peer.id)
+        XCTAssertEqual(table.bestRoute(for: "192.168.55.8")?.kind, .subnetProxy)
+    }
 }

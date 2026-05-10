@@ -56,6 +56,21 @@ struct RouteUpdate: Equatable {
 }
 
 extension RouteUpdate {
+    func wireData() throws -> Data {
+        var data = Data()
+        try data.appendOptionalString(ipv4Address)
+        try data.appendOptionalString(ipv6Address)
+        guard (0...255).contains(cost), proxyCIDRs.count <= Int(UInt8.max) else {
+            throw FrameCodecError.malformedPayload
+        }
+        data.append(UInt8(cost))
+        data.append(UInt8(proxyCIDRs.count))
+        for cidr in proxyCIDRs {
+            try data.appendString(cidr)
+        }
+        return data
+    }
+
     init(wireData: Data, sender: PeerID) throws {
         var cursor = RouteUpdateCursor(wireData)
         let ipv4Address = try cursor.readOptionalString()
@@ -78,6 +93,27 @@ extension RouteUpdate {
             cost: cost,
             proxyCIDRs: proxyCIDRs
         )
+    }
+}
+
+private extension Data {
+    mutating func appendString(_ value: String) throws {
+        let bytes = Data(value.utf8)
+        guard bytes.count <= Int(UInt16.max) else {
+            throw FrameCodecError.malformedPayload
+        }
+        append(UInt8((bytes.count >> 8) & 0xFF))
+        append(UInt8(bytes.count & 0xFF))
+        append(bytes)
+    }
+
+    mutating func appendOptionalString(_ value: String?) throws {
+        guard let value else {
+            append(0)
+            return
+        }
+        append(1)
+        try appendString(value)
     }
 }
 
