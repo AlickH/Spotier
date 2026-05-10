@@ -13,6 +13,8 @@ protocol Transport {
     func send(_ frame: CoreFrame, to endpoint: TransportEndpoint) async throws
 }
 
+protocol RelayBootstrapTransport: Transport {}
+
 enum TransportError: Error, Equatable {
     case listenerUnavailable
     case unsupportedListenerScheme

@@ -63,6 +63,27 @@ final class MeshEngineTransportTests: XCTestCase {
         ])
     }
 
+    func testRelayBootstrapUsesTCPPeerWhenTransportIsInjected() async throws {
+        let transport = RecordingRelayTransport()
+        let engine = MeshEngine(transport: transport)
+        let config = MeshEngineConfiguration(
+            networkName: "easytier",
+            networkSecret: "secret",
+            peers: ["tcp://relay.example.com:11010"],
+            listeners: ["udp://127.0.0.1:19094"]
+        )
+
+        try await engine.start(configuration: config)
+        defer {
+            Task { await engine.stop() }
+        }
+
+        XCTAssertEqual(engine.status, .running)
+        XCTAssertEqual(transport.sentEndpoints, [
+            TransportEndpoint(host: "relay.example.com", port: 11010)
+        ])
+    }
+
     func testStartFailsWhenConfiguredPeersContainNoUDPPeer() async {
         let transport = RecordingTransport()
         let engine = MeshEngine(transport: transport)
@@ -129,6 +150,22 @@ private final class RecordingTransport: Transport {
     func start() async throws {
         didStart = true
     }
+
+    func stop() async {}
+
+    func send(_ frame: CoreFrame, to endpoint: TransportEndpoint) async throws {
+        sentEndpoints.append(endpoint)
+    }
+}
+
+private final class RecordingRelayTransport: RelayBootstrapTransport {
+    let inboundFrames = AsyncStream<TransportInboundFrame> { continuation in
+        continuation.finish()
+    }
+
+    private(set) var sentEndpoints: [TransportEndpoint] = []
+
+    func start() async throws {}
 
     func stop() async {}
 

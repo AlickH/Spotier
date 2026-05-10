@@ -54,7 +54,8 @@ final class MeshEngine {
         )
 
         do {
-            try validateConfiguredPeers(configuration.peers)
+            let relayBootstrapEnabled = injectedTransport is any RelayBootstrapTransport
+            try validateConfiguredPeers(configuration.peers, relayBootstrapEnabled: relayBootstrapEnabled)
             if let injectedTransport {
                 try await injectedTransport.start()
                 transport = injectedTransport
@@ -66,7 +67,7 @@ final class MeshEngine {
                 throw TransportError.unsupportedListenerScheme
             }
             startTransportReader()
-            try await sendBootstrapHello(to: configuration.peers)
+            try await sendBootstrapHello(to: configuration.peers, relayBootstrapEnabled: relayBootstrapEnabled)
             setStatus(.running)
         } catch {
             let message = String(describing: error)
@@ -165,20 +166,26 @@ final class MeshEngine {
         return nil
     }
 
-    private func validateConfiguredPeers(_ peers: [String]) throws {
+    private func validateConfiguredPeers(_ peers: [String], relayBootstrapEnabled: Bool) throws {
         guard !peers.isEmpty else { return }
-        guard peers.contains(where: { URL(string: $0)?.scheme == "udp" }) else {
+        guard peers.contains(where: { supportsBootstrapPeer($0, relayBootstrapEnabled: relayBootstrapEnabled) }) else {
             throw TransportError.unsupportedPeerScheme
         }
     }
 
-    private func sendBootstrapHello(to peers: [String]) async throws {
+    private func sendBootstrapHello(to peers: [String], relayBootstrapEnabled: Bool) async throws {
         guard let transport, let peerManager else { return }
         for peer in peers {
-            guard URL(string: peer)?.scheme == "udp" else { continue }
+            guard supportsBootstrapPeer(peer, relayBootstrapEnabled: relayBootstrapEnabled) else { continue }
             let endpoint = try TransportEndpoint(urlString: peer)
             try await transport.send(peerManager.makeHelloFrame(), to: endpoint)
         }
+    }
+
+    private func supportsBootstrapPeer(_ peer: String, relayBootstrapEnabled: Bool) -> Bool {
+        guard let scheme = URL(string: peer)?.scheme else { return false }
+        if scheme == "udp" { return true }
+        return relayBootstrapEnabled && (scheme == "tcp" || scheme == "tls")
     }
 
     private func setStatus(_ newStatus: MeshEngineStatus) {

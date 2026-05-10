@@ -1,7 +1,7 @@
 import Foundation
 import Network
 
-final class RelayTransport: Transport {
+final class RelayTransport: RelayBootstrapTransport {
     let inboundFrames: AsyncStream<TransportInboundFrame>
 
     private let relayEndpoint: TransportEndpoint
