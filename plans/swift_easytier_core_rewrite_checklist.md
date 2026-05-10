@@ -229,15 +229,16 @@
 - Modify: `SpotierCore/Transport/Transport.swift`
 - Test: `SpotierTests/RelayTransportTests.swift`
 
-- [ ] Define relay messages as the same `CoreFrame` over a persistent connection.
-- [ ] Use `NWConnection` over TCP/TLS when relay URL is configured as TLS.
-- [ ] Use one length-prefixed frame stream.
-- [ ] Authenticate relay session with the same network identity handshake.
-- [ ] Support relaying control frames.
-- [ ] Support relaying encrypted data frames.
-- [ ] Test length-prefixed frame round trip using a local listener.
-- [ ] Test relay reconnect is initiated only by explicit transport restart.
-- [ ] Commit.
+- [x] Define relay messages as the same `CoreFrame` over a persistent connection.
+- [x] Use `NWConnection` over TCP/TLS when relay URL is configured as TLS.
+- [x] Use one length-prefixed frame stream.
+- [x] Authenticate relay session with the same network identity handshake.
+- [x] Support relaying control frames.
+- [x] Support relaying encrypted data frames.
+- [x] Test length-prefixed frame round trip using a local listener.
+- [x] Test relay reconnect is initiated only by explicit transport restart.
+- [ ] Run relay transport tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Commit.
 
 ### Task 9: Implement Peer Store And Session Lifecycle
 

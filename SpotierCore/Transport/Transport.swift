@@ -15,5 +15,7 @@ protocol Transport {
 
 enum TransportError: Error, Equatable {
     case listenerUnavailable
+    case connectionUnavailable
     case sendFailed
+    case malformedRelayFrame
 }
