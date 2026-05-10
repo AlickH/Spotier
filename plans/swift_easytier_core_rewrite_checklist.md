@@ -170,16 +170,17 @@
 - Create: `SpotierCore/Protocol/FrameCodec.swift`
 - Test: `SpotierTests/FrameCodecTests.swift`
 
-- [ ] Define a compact frame header with version, type, flags, sender peer ID, receiver peer ID, sequence, and payload length.
-- [ ] Define control message cases for hello, sessionOffer, sessionAnswer, routeUpdate, peerPing, peerPong, relayRequest, relayResponse, endpointCandidate.
-- [ ] Define data packet frame carrying encrypted IP packet bytes.
-- [ ] Implement binary encode/decode with explicit byte order.
-- [ ] Reject unknown protocol versions.
-- [ ] Reject malformed lengths.
-- [ ] Test round-trip encoding for every control message.
-- [ ] Test rejection of truncated frames.
-- [ ] Test rejection of invalid payload length.
-- [ ] Commit.
+- [x] Define a compact frame header with version, type, flags, sender peer ID, receiver peer ID, sequence, and payload length.
+- [x] Define control message cases for hello, sessionOffer, sessionAnswer, routeUpdate, peerPing, peerPong, relayRequest, relayResponse, endpointCandidate.
+- [x] Define data packet frame carrying encrypted IP packet bytes.
+- [x] Implement binary encode/decode with explicit byte order.
+- [x] Reject unknown protocol versions.
+- [x] Reject malformed lengths.
+- [x] Test round-trip encoding for every control message.
+- [x] Test rejection of truncated frames.
+- [x] Test rejection of invalid payload length.
+- [ ] Run frame codec tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Commit.
 
 ### Task 6: Implement Session Encryption
 
