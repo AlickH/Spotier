@@ -170,20 +170,24 @@ struct SpotierStatus: Codable {
             }
         }
         var virtualIPv4: IPv4CIDR?
+        var virtualIPv6: IPv6CIDR?
         var hostname: String
         var version: String
         var ips: IPList?
         var stunInfo: STUNInfo?
         var listeners: [Url]? = nil
         var vpnPortalCfg: String?
+        var peerId: Int?
 
         enum CodingKeys: String, CodingKey {
             case virtualIPv4 = "virtual_ipv4"
+            case virtualIPv6 = "virtual_ipv6"
             case hostname, version
             case ips
             case stunInfo = "stun_info"
             case listeners
             case vpnPortalCfg = "vpn_portal_cfg"
+            case peerId = "peer_id"
         }
     }
 
