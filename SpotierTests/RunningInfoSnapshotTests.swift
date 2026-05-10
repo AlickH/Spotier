@@ -117,6 +117,33 @@ final class RunningInfoSnapshotTests: XCTestCase {
         XCTAssertEqual(urls, ["udp://0.0.0.0:11010", "udp://198.51.100.9:21010"])
     }
 
+    func testRunningInfoNodeInfoExposesPeerIDAndIPv6() throws {
+        let network = NetworkSecret(networkName: "easytier", secret: "secret")
+        let local = try NodeIdentity.derive(
+            network: network,
+            deviceSeed: Data(repeating: 1, count: 32),
+            hostname: "local",
+            virtualIPv4: "10.0.0.1/24",
+            virtualIPv6: "fd00:0:0:0:0:0:0:1/64"
+        )
+        let snapshot = RunningInfoSnapshot.make(
+            localIdentity: local,
+            configuration: MeshEngineConfiguration(networkName: "easytier", networkSecret: "secret"),
+            peerStore: PeerStore(),
+            routeTable: RouteTable(),
+            events: [],
+            running: true,
+            errorMessage: nil
+        )
+        let json = try JSONSerialization.jsonObject(with: snapshot.jsonData()) as? [String: Any]
+        let nodeInfo = json?["my_node_info"] as? [String: Any]
+        let virtualIPv6 = nodeInfo?["virtual_ipv6"] as? [String: Any]
+
+        XCTAssertEqual(nodeInfo?["peer_id"] as? Int, Int(UInt32(truncatingIfNeeded: local.peerID.rawValue)))
+        XCTAssertNotNil(virtualIPv6)
+        XCTAssertEqual(virtualIPv6?["network_length"] as? Int, 64)
+    }
+
     func testRunningInfoGroupsPeerHostRouteWithProxyCIDRs() throws {
         var store = PeerStore()
         store.upsert(Peer(

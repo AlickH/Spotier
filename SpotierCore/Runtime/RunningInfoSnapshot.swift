@@ -32,13 +32,13 @@ struct RunningInfoSnapshot: Codable, Equatable {
 
         let peerRows = peerStore.peers.map { peer in
             PeerInfo(
-                peerID: Int(peer.id.rawValue),
+                peerID: runningInfoPeerID(peer.id),
                 connections: [
                     PeerConnectionInfo(
                         connectionID: "\(peer.id.rawValue)-direct",
-                        localPeerID: Int(localIdentity?.peerID.rawValue ?? 0),
+                        localPeerID: localIdentity.map { runningInfoPeerID($0.peerID) } ?? 0,
                         isClient: true,
-                        peerID: Int(peer.id.rawValue),
+                        peerID: runningInfoPeerID(peer.id),
                         features: [],
                         tunnel: nil,
                         stats: PeerConnectionStats(),
@@ -77,7 +77,8 @@ struct RunningInfoSnapshot: Codable, Equatable {
         var rows: [Route] = []
 
         for route in routeTable.routes {
-            let index = rows.firstIndex { $0.peerID == Int(route.ownerPeerID.rawValue) }
+            let peerID = runningInfoPeerID(route.ownerPeerID)
+            let index = rows.firstIndex { $0.peerID == peerID }
             let existing = index.map { rows[$0] }
             let row = updatedRouteRow(existing, with: route, peerStore: peerStore)
             if let index {
@@ -96,10 +97,10 @@ struct RunningInfoSnapshot: Codable, Equatable {
         peerStore: PeerStore
     ) -> Route {
         var row = row ?? Route(
-            peerID: Int(route.ownerPeerID.rawValue),
+            peerID: runningInfoPeerID(route.ownerPeerID),
             ipv4Address: nil,
             ipv6Address: nil,
-            nextHopPeerID: Int(route.nextHopPeerID.rawValue),
+            nextHopPeerID: runningInfoPeerID(route.nextHopPeerID),
             cost: route.cost,
             pathLatency: 0,
             proxyCIDRs: [],
@@ -118,20 +119,27 @@ struct RunningInfoSnapshot: Codable, Equatable {
 
         return row
     }
+
+    private static func runningInfoPeerID(_ peerID: PeerID) -> Int {
+        Int(UInt32(truncatingIfNeeded: peerID.rawValue))
+    }
 }
 
 extension RunningInfoSnapshot {
     struct NodeInfo: Codable, Equatable {
         var virtualIPv4: IPv4CIDR?
+        var virtualIPv6: IPv6CIDR?
         var hostname: String
         var version: String
         var ips: IPList?
         var stunInfo: STUNInfo?
         var listeners: [URLString]?
         var vpnPortalConfig: String?
+        var peerID: Int
 
         init(identity: NodeIdentity, configuration: MeshEngineConfiguration?) {
-            virtualIPv4 = identity.virtualIPv4.flatMap(IPv4CIDR.init)
+            virtualIPv4 = identity.virtualIPv4.flatMap { IPv4CIDR($0) }
+            virtualIPv6 = identity.virtualIPv6.flatMap { IPv6CIDR($0) }
             hostname = identity.hostname
             version = "swift-core"
             let configuredListeners = (configuration?.listeners ?? []) + (configuration?.mappedListeners ?? [])
@@ -140,13 +148,16 @@ extension RunningInfoSnapshot {
             stunInfo = STUNInfo()
             listeners = listenerURLs
             vpnPortalConfig = nil
+            peerID = RunningInfoSnapshot.runningInfoPeerID(identity.peerID)
         }
 
         enum CodingKeys: String, CodingKey {
             case virtualIPv4 = "virtual_ipv4"
+            case virtualIPv6 = "virtual_ipv6"
             case hostname, version, ips, listeners
             case stunInfo = "stun_info"
             case vpnPortalConfig = "vpn_portal_cfg"
+            case peerID = "peer_id"
         }
     }
 
