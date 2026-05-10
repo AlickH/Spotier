@@ -510,6 +510,7 @@
 - [x] Allow `MeshEngine` bootstrap over explicitly injected Spotier relay transports without weakening UDP-only default startup validation.
 - [x] Preserve remote endpoint schemes in Swift-core running-info tunnel output instead of reporting relay/TCP peers as UDP.
 - [x] Remove stale localized strings for hidden Rust-only config generator controls and EasyTier public-server TCP examples.
+- [x] Delete unreachable EasyTier public-server UI branch from the Swift-core config generator form.
 
 ## Explicitly Out Of Scope
 

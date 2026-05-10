@@ -66,6 +66,11 @@ final class ConfigGeneratorBehaviorTests: XCTestCase {
         XCTAssertEqual(ConfigScreen.allCases, [.main, .advanced])
     }
 
+    func testPeerModePickerOnlyExposesSwiftCoreGeneratedModes() {
+        XCTAssertEqual(PeerMode.allCases, [.manual, .standalone])
+        XCTAssertFalse(PeerMode.allCases.contains(.publicServer))
+    }
+
     func testAdvancedSectionsOnlyExposeSwiftCoreGeneratedFields() {
         XCTAssertEqual(
             ConfigGeneratorAdvancedSection.allCases,

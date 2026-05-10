@@ -419,14 +419,6 @@ struct ConfigGeneratorMainForm: View {
                     .foregroundColor(.blue)
                 }
                 .buttonStyle(.plain)
-            } else if model.peerMode == .publicServer {
-                HStack {
-                    Text(LocalizedStringKey("服务器"))
-                    Spacer()
-                    Text(LocalizedStringKey("Swift core does not use EasyTier public servers"))
-                        .foregroundColor(.secondary)
-                        .font(.caption)
-                }
             }
         }
     }
