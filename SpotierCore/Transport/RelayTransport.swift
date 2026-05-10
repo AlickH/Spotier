@@ -187,10 +187,10 @@ final class RelayFrameStreamDecoder {
 
         var records: [Data] = []
         while buffer.count >= 4 {
-            let length = Int(buffer.readUInt32(at: 0))
+            let length = Int(buffer.prefix(4).readUInt32())
             guard buffer.count >= 4 + length else { break }
 
-            records.append(Data(buffer[4..<4 + length]))
+            records.append(Data(buffer.dropFirst(4).prefix(length)))
             buffer.removeFirst(4 + length)
         }
 
@@ -217,9 +217,8 @@ private extension Data {
         append(UInt8(value & 0xFF))
     }
 
-    func readUInt32(at offset: Int) -> UInt32 {
-        let bytes = self[offset..<offset + 4]
-        return bytes.reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
+    func readUInt32() -> UInt32 {
+        reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
     }
 
     func readUInt64(at offset: Int) -> UInt64 {

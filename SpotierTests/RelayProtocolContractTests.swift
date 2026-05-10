@@ -20,7 +20,7 @@ final class RelayProtocolContractTests: XCTestCase {
 
         XCTAssertEqual(recordLength, UInt32(encoded.count - RelayProtocolV1.lengthPrefixLength))
         XCTAssertEqual(sequence, frame.sequence)
-        XCTAssertEqual(try RelayFrameCodec.decode(record, crypto: pair.server), frame)
+        assertPeerPingFrame(try RelayFrameCodec.decode(record, crypto: pair.server), sequence: frame.sequence)
     }
 
     func testRelayV1StreamDecoderWaitsForCompleteRecord() throws {
@@ -34,8 +34,9 @@ final class RelayProtocolContractTests: XCTestCase {
         let records = try decoder.append(Data(first.dropFirst(6)) + second)
 
         XCTAssertEqual(records.count, 2)
-        XCTAssertEqual(try RelayFrameCodec.decode(records[0], crypto: pair.server), frame(sequence: 1))
-        XCTAssertEqual(try RelayFrameCodec.decode(records[1], crypto: pair.server), frame(sequence: 2))
+        guard records.count == 2 else { return }
+        assertPeerPingFrame(try RelayFrameCodec.decode(records[0], crypto: pair.server), sequence: 1)
+        assertPeerPingFrame(try RelayFrameCodec.decode(records[1], crypto: pair.server), sequence: 2)
     }
 
     func testRelayV1AcceptsOnlyTCPAndTLSSchemes() throws {
@@ -59,6 +60,22 @@ final class RelayProtocolContractTests: XCTestCase {
             sequence: sequence,
             payload: .control(.peerPing)
         )
+    }
+
+    private func assertPeerPingFrame(
+        _ frame: CoreFrame,
+        sequence: UInt64,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        XCTAssertEqual(frame.type.rawValue, CoreFrameType.control.rawValue, file: file, line: line)
+        XCTAssertEqual(frame.sender.rawValue, 1, file: file, line: line)
+        XCTAssertEqual(frame.receiver.rawValue, 2, file: file, line: line)
+        XCTAssertEqual(frame.sequence, sequence, file: file, line: line)
+        guard case .control(.peerPing) = frame.payload else {
+            XCTFail("Expected peer ping control frame", file: file, line: line)
+            return
+        }
     }
 }
 

@@ -1,10 +1,10 @@
 import Foundation
 import XCTest
-@testable import SpotierNE
+@testable import Spotier
 
 final class PacketTunnelIOTests: XCTestCase {
     func testReadsPacketsFromFlow() async {
-        let flow = FakePacketTunnelFlow()
+        let flow = FakePacketFlow()
         flow.readBatches = [
             ([Data([0x45, 0x00])], [NSNumber(value: AF_INET)])
         ]
@@ -21,31 +21,13 @@ final class PacketTunnelIOTests: XCTestCase {
     }
 
     func testWritesPacketsToFlow() {
-        let flow = FakePacketTunnelFlow()
+        let flow = FakePacketFlow()
         let io = PacketTunnelIO(flow: flow)
 
         io.write(PacketTunnelPacket(data: Data([0x60, 0x00]), protocolFamily: AF_INET6))
 
         XCTAssertEqual(flow.writtenPackets, [Data([0x60, 0x00])])
         XCTAssertEqual(flow.writtenProtocols, [NSNumber(value: AF_INET6)])
-    }
-}
-
-private final class FakePacketTunnelFlow: PacketTunnelFlowIO {
-    var readBatches: [([Data], [NSNumber])] = []
-    private(set) var writtenPackets: [Data] = []
-    private(set) var writtenProtocols: [NSNumber] = []
-
-    func readPackets(completionHandler: @escaping @Sendable ([Data], [NSNumber]) -> Void) {
-        guard !readBatches.isEmpty else { return }
-        let batch = readBatches.removeFirst()
-        completionHandler(batch.0, batch.1)
-    }
-
-    func writePackets(_ packets: [Data], withProtocols protocols: [NSNumber]) -> Bool {
-        writtenPackets.append(contentsOf: packets)
-        writtenProtocols.append(contentsOf: protocols)
-        return true
     }
 }
 

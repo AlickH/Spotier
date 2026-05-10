@@ -20,13 +20,7 @@ final class MeshEngineTransportTests: XCTestCase {
     }
 
     func testTransportStartFailureEmitsFatalError() async throws {
-        let occupiedTransport = UDPTransport(bindPort: 19094)
-        try await occupiedTransport.start()
-        defer {
-            Task { await occupiedTransport.stop() }
-        }
-
-        let engine = MeshEngine()
+        let engine = MeshEngine(transport: FailingStartTransport())
         let config = MeshEngineConfiguration(
             networkName: "easytier",
             networkSecret: "secret",
@@ -44,5 +38,21 @@ final class MeshEngineTransportTests: XCTestCase {
                 return false
             })
         }
+    }
+}
+
+private final class FailingStartTransport: Transport {
+    let inboundFrames = AsyncStream<TransportInboundFrame> { continuation in
+        continuation.finish()
+    }
+
+    func start() async throws {
+        throw TransportError.listenerUnavailable
+    }
+
+    func stop() async {}
+
+    func send(_ frame: CoreFrame, to endpoint: TransportEndpoint) async throws {
+        throw TransportError.connectionUnavailable
     }
 }

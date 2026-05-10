@@ -450,10 +450,10 @@
 **Files:**
 - Modify only files required by failing build or tests.
 
-- [ ] Run: `xcodebuild -project Spotier.xcodeproj -scheme Spotier -destination 'platform=macOS' build`
-- [ ] Run: `xcodebuild -project Spotier.xcodeproj -scheme Spotier -destination 'platform=macOS' test`
-- [ ] Run the iOS build command for the repo's configured iOS scheme once the target exists.
-- [ ] Run the tvOS build command for the repo's configured tvOS scheme once the target exists.
+- [x] Run: `xcodebuild -project Spotier.xcodeproj -scheme Spotier -destination 'platform=macOS' build`
+- [x] Run: `xcodebuild -project Spotier.xcodeproj -scheme Spotier -destination 'platform=macOS' test`
+- [x] Run the iOS build command for the repo's configured iOS scheme once the target exists. Current project has no iOS scheme or target.
+- [x] Run the tvOS build command for the repo's configured tvOS scheme once the target exists. Current project has no tvOS scheme or target.
 - [ ] Launch the macOS app.
 - [ ] Start VPN tunnel.
 - [ ] Confirm Packet Tunnel logs show Swift `MeshEngine` startup.
@@ -475,9 +475,9 @@
 - [ ] NAT candidate exchange is covered by tests.
 - [ ] Host app can start and stop the tunnel.
 - [ ] Host app can display running info from Swift core.
-- [ ] macOS build passes.
-- [ ] iOS build passes if target exists.
-- [ ] tvOS build passes if target exists.
+- [x] macOS build passes.
+- [x] iOS build passes if target exists. Current project has no iOS scheme or target.
+- [x] tvOS build passes if target exists. Current project has no tvOS scheme or target.
 - [ ] The repository contains no Rust build dependency needed for runtime.
 
 ## Explicitly Out Of Scope
