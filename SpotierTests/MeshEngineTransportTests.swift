@@ -62,6 +62,23 @@ final class MeshEngineTransportTests: XCTestCase {
             TransportEndpoint(host: "198.51.100.20", port: 11010)
         ])
     }
+
+    func testStartFailsWhenListenersAreConfiguredButNoneAreUDP() async {
+        let engine = MeshEngine()
+        let config = MeshEngineConfiguration(
+            networkName: "easytier",
+            networkSecret: "secret",
+            listeners: ["tcp://127.0.0.1:19095"]
+        )
+
+        do {
+            try await engine.start(configuration: config)
+            XCTFail("Expected unsupported listener failure")
+        } catch {
+            XCTAssertEqual(error as? TransportError, .unsupportedListenerScheme)
+            XCTAssertTrue(engine.events.contains(.fatalError("unsupportedListenerScheme")))
+        }
+    }
 }
 
 private final class FailingStartTransport: Transport {

@@ -500,6 +500,7 @@
 - [x] Hide unsupported EasyTier public server mode from the Swift-core config generator.
 - [x] Align core config parser fixtures with Swift-core UDP bootstrap examples instead of EasyTier public server examples.
 - [x] Omit unsupported Rust-only config fields from newly generated Swift-core TOML while preserving old-config parsing.
+- [x] Fail Swift core startup when configured listeners exist but none are UDP-backed Swift transports.
 - [x] Add a Swift Package entry point for `SpotierCore` covering iOS, tvOS, and macOS source-level builds.
 
 ## Explicitly Out Of Scope

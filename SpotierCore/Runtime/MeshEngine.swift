@@ -61,6 +61,8 @@ final class MeshEngine {
                 let transport = UDPTransport(bindPort: udpPort)
                 try await transport.start()
                 self.transport = transport
+            } else if !configuration.listeners.isEmpty {
+                throw TransportError.unsupportedListenerScheme
             }
             startTransportReader()
             try await sendBootstrapHello(to: configuration.peers)
