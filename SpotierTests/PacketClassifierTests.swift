@@ -362,8 +362,14 @@ final class PacketClassifierTests: XCTestCase {
         XCTAssertEqual(router.route(multicast), .peers([PeerID(2), PeerID(3)]))
     }
 
-    func testIPv6LastAddressOnlyForwardsWhenItBelongsToLocalNetwork() throws {
-        let foreignNetworkLastAddress = try PacketClassifier.parse(ipv6Packet(
+    func testNetworkLastAddressForwardsToKnownPeersUsingLocalPrefixLength() throws {
+        let ipv4LastAddress = try PacketClassifier.parse(ipv4Packet(
+            source: [10, 126, 126, 4],
+            destination: [192, 168, 44, 255],
+            protocolNumber: 17,
+            payload: []
+        ))
+        let ipv6LastAddress = try PacketClassifier.parse(ipv6Packet(
             source: [0xfd00, 0, 0, 0, 0, 0, 0, 1],
             destination: [0xfd01, 0, 0, 0, 0xffff, 0xffff, 0xffff, 0xffff],
             nextHeader: 17,
@@ -372,16 +378,21 @@ final class PacketClassifierTests: XCTestCase {
         var table = RouteTable()
         table.apply(RouteUpdate(
             peerID: PeerID(2),
-            ipv4Address: nil,
+            ipv4Address: "10.126.126.2",
             ipv6Address: "fd00:0:0:0:0:0:0:2",
             nextHopPeerID: PeerID(2),
             cost: 1,
             proxyCIDRs: []
         ))
 
-        let router = PacketRouter(routeTable: table, localIPv6: "fd00:0:0:0:0:0:0:1/64")
+        let router = PacketRouter(
+            routeTable: table,
+            localIPv4: "10.126.126.4/24",
+            localIPv6: "fd00:0:0:0:0:0:0:1/64"
+        )
 
-        XCTAssertEqual(router.route(foreignNetworkLastAddress), .drop)
+        XCTAssertEqual(router.route(ipv4LastAddress), .peers([PeerID(2)]))
+        XCTAssertEqual(router.route(ipv6LastAddress), .peers([PeerID(2)]))
     }
 
     func testIPv4MulticastDoesNotUseExitNodeWhenThereAreNoRemotePeers() throws {

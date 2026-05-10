@@ -159,13 +159,12 @@ struct PacketRouter {
         guard parts.count == 2,
               let prefix = Int(parts[1]),
               (0...32).contains(prefix),
-              let localValue = parseIPv4(parts[0]),
               let addressValue = parseIPv4(address) else {
             return false
         }
 
         let mask = prefix == 0 ? UInt32(0) : UInt32.max << (32 - prefix)
-        return addressValue == (localValue | ~mask)
+        return addressValue == ((addressValue & mask) | ~mask)
     }
 
     private func isSameIPv6NetworkBroadcast(_ address: String) -> Bool {
@@ -174,21 +173,13 @@ struct PacketRouter {
         guard parts.count == 2,
               let prefix = Int(parts[1]),
               (0...128).contains(prefix),
-              let localBytes = parseIPv6(parts[0]),
               let addressBytes = parseIPv6(address) else {
             return false
         }
 
         let fullBytes = prefix / 8
         let remainingBits = prefix % 8
-        if fullBytes > 0, localBytes[0..<fullBytes] != addressBytes[0..<fullBytes] {
-            return false
-        }
         if remainingBits > 0 {
-            let networkMask = UInt8.max << (8 - remainingBits)
-            guard (localBytes[fullBytes] & networkMask) == (addressBytes[fullBytes] & networkMask) else {
-                return false
-            }
             let hostMask = UInt8.max >> remainingBits
             guard (addressBytes[fullBytes] & hostMask) == hostMask else { return false }
         }
