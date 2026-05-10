@@ -19,6 +19,23 @@ final class RouteTableTests: XCTestCase {
         XCTAssertNil(table.bestRoute(for: "10.1.1.3"))
     }
 
+    func testDirectPeerCIDRAddressIsHostRouteOnly() {
+        var table = RouteTable()
+        table.apply(RouteUpdate(
+            peerID: PeerID(7),
+            ipv4Address: "10.1.1.2/24",
+            ipv6Address: "fd00:0:0:0:0:0:0:2/64",
+            nextHopPeerID: PeerID(7),
+            cost: 1,
+            proxyCIDRs: []
+        ))
+
+        XCTAssertEqual(table.bestRoute(for: "10.1.1.2")?.ownerPeerID, PeerID(7))
+        XCTAssertNil(table.bestRoute(for: "10.1.1.99"))
+        XCTAssertEqual(table.bestRoute(for: "fd00:0:0:0:0:0:0:2")?.ownerPeerID, PeerID(7))
+        XCTAssertNil(table.bestRoute(for: "fd00:0:0:0:0:0:0:99"))
+    }
+
     func testSubnetRouteSelectionUsesLowestCostThenNewestUpdate() {
         var table = RouteTable()
         let base = Date(timeIntervalSince1970: 100)

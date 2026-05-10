@@ -90,10 +90,8 @@ struct RouteTable: Equatable {
     }
 
     private func hostDestination(from address: String, defaultPrefix: Int) -> String {
-        if address.contains("/") {
-            return address
-        }
-        return "\(address)/\(defaultPrefix)"
+        let host = address.split(separator: "/", maxSplits: 1).first.map(String.init) ?? address
+        return "\(host)/\(defaultPrefix)"
     }
 
     private func routeContains(_ destination: String, address: String) -> Bool {
