@@ -81,41 +81,6 @@ struct ConfigGeneratorAdvancedForm: View {
         }
     }
 
-    private var overrideDNSSection: some View {
-        SwiftUI.Section(header: Text("覆盖 DNS"), footer: Text("覆盖系统 DNS。如果也同时启用了魔法 DNS，需要手动添加。")) {
-            Toggle("启用", isOn: $model.enableOverrideDns)
-            if model.enableOverrideDns {
-                ForEach($model.overrideDns) { $dns in
-                    HStack {
-                        Text("地址")
-                        Spacer()
-                        ConfigGeneratorView.IPv4Field(ip: $dns.value)
-                            .fixedSize()
-
-                        Button {
-                            removeEditableString(withID: dns.id, from: \.overrideDns)
-                        } label: {
-                            Image(systemName: "minus.circle.fill")
-                                .foregroundColor(.red)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-
-                Button {
-                    appendEditableString(to: \.overrideDns)
-                } label: {
-                    HStack {
-                        Image(systemName: "plus.circle.fill")
-                        Text("添加 DNS")
-                    }
-                    .foregroundColor(.blue)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
     private var proxySubnetSection: some View {
         SwiftUI.Section(header: Text(LocalizedStringKey("代理网段"))) {
             ForEach($model.proxySubnets) { $subnet in
@@ -157,29 +122,6 @@ struct ConfigGeneratorAdvancedForm: View {
         }
     }
 
-    private var vpnPortalSection: some View {
-        SwiftUI.Section("VPN 门户配置") {
-            Toggle("启用", isOn: $model.enableVpnPortal)
-            if model.enableVpnPortal {
-                HStack {
-                    Text("客户端网段")
-                    Spacer()
-                    ConfigGeneratorView.IPv4CidrField(ip: $model.vpnPortalIpBinding, cidr: $model.vpnPortalCidrBinding)
-                        .fixedSize()
-                }
-                HStack {
-                    Text("监听端口")
-                    Spacer()
-                    TextField("22022", value: $model.vpnPortalListenPort, format: .number.grouping(.never))
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: 80)
-                        .labelsHidden()
-                        .textContentType(.none)
-                }
-            }
-        }
-    }
-
     private var listenersSection: some View {
         SwiftUI.Section("监听地址") {
             ForEach($model.listeners) { $listener in
@@ -209,15 +151,6 @@ struct ConfigGeneratorAdvancedForm: View {
                 .foregroundColor(.blue)
             }
             .buttonStyle(.plain)
-        }
-    }
-
-    private var relayWhitelistSection: some View {
-        SwiftUI.Section(header: Text("网络白名单"), footer: Text("仅转发白名单网络的流量，支持通配符字符串。多个网络名称间可以使用英文空格间隔。如果该参数为空，则禁用转发。默认允许所有网络。例如：* (所有网络), def* (以 def 为前缀的网络), net1 net2 (只允许 net1 和 net2)。")) {
-            Toggle("启用", isOn: $model.enableRelayNetworkWhitelist)
-            if model.enableRelayNetworkWhitelist {
-                editableStringListSection(list: $model.relayNetworkWhitelist, placeholder: "CIDR (e.g. 10.0.0.0/24)")
-            }
         }
     }
 
@@ -253,22 +186,6 @@ struct ConfigGeneratorAdvancedForm: View {
                     .foregroundColor(.blue)
                 }
                 .buttonStyle(.plain)
-            }
-        }
-    }
-
-    private var socks5Section: some View {
-        SwiftUI.Section(header: Text(LocalizedStringKey("SOCKS5 服务器")), footer: Text(LocalizedStringKey("开启 SOCKS5 代理功能，Surge 等外部程序可通过此端口连接 Swiftier 网络。"))) {
-            Toggle(LocalizedStringKey("启用"), isOn: $model.enableSocks5)
-            if model.enableSocks5 {
-                HStack {
-                    Text(LocalizedStringKey("监听端口"))
-                    Spacer()
-                    TextField("", value: $model.socks5Port, format: .number.grouping(.never))
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: 80)
-                        .textContentType(.none)
-                }
             }
         }
     }

@@ -506,6 +506,7 @@
 - [x] Align config generator listener examples with the UDP-only Swift transport path.
 - [x] Remove the new-config port forwarding UI entry because Swift core no longer generates `[[port_forward]]`.
 - [x] Hide unsupported Rust-only advanced config controls while keeping old-config parsing intact.
+- [x] Delete dead SwiftUI form code for unsupported Rust-only advanced controls.
 
 ## Explicitly Out Of Scope
 
