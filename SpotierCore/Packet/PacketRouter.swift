@@ -32,7 +32,7 @@ struct PacketRouter {
     func route(_ packet: IPPacket) -> PacketRouteDecision {
         let destination = packet.destinationAddress
 
-        if destination == localIPv4 || destination.lowercased() == localIPv6?.lowercased() {
+        if destination == addressPart(localIPv4) || destination.lowercased() == addressPart(localIPv6)?.lowercased() {
             return .local
         }
 
@@ -82,5 +82,9 @@ struct PacketRouter {
         let bytes = address.split(separator: ".").compactMap { UInt8($0) }
         guard bytes.count == 4 else { return nil }
         return bytes.reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
+    }
+
+    private func addressPart(_ cidrOrAddress: String?) -> String? {
+        cidrOrAddress?.split(separator: "/", maxSplits: 1).first.map(String.init)
     }
 }

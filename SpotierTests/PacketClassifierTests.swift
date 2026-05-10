@@ -52,6 +52,30 @@ final class PacketClassifierTests: XCTestCase {
         XCTAssertEqual(router.route(packet), .local)
     }
 
+    func testLocalRoutingMatchesConfiguredCIDRAddress() throws {
+        let ipv4 = try PacketClassifier.parse(ipv4Packet(
+            source: [10, 0, 0, 2],
+            destination: [10, 0, 0, 1],
+            protocolNumber: 17,
+            payload: []
+        ))
+        let ipv6 = try PacketClassifier.parse(ipv6Packet(
+            source: [0xfd00, 0, 0, 0, 0, 0, 0, 2],
+            destination: [0xfd00, 0, 0, 0, 0, 0, 0, 1],
+            nextHeader: 58,
+            payload: []
+        ))
+
+        let router = PacketRouter(
+            routeTable: RouteTable(),
+            localIPv4: "10.0.0.1/24",
+            localIPv6: "fd00:0:0:0:0:0:0:1/64"
+        )
+
+        XCTAssertEqual(router.route(ipv4), .local)
+        XCTAssertEqual(router.route(ipv6), .local)
+    }
+
     func testSubnetProxyRouting() throws {
         let packet = try PacketClassifier.parse(ipv4Packet(
             source: [10, 0, 0, 1],
