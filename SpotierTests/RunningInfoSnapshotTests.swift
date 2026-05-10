@@ -92,4 +92,28 @@ final class RunningInfoSnapshotTests: XCTestCase {
         XCTAssertNotNil(json?["my_node_info"])
         XCTAssertEqual(json?["running"] as? Bool, true)
     }
+
+    func testRunningInfoNodeInfoExposesConfiguredListeners() async throws {
+        let engine = MeshEngine()
+        let config = MeshEngineConfiguration(
+            networkName: "easytier",
+            networkSecret: "secret",
+            virtualIPv4: "10.0.0.1/24",
+            listeners: ["udp://0.0.0.0:11010"],
+            mappedListeners: ["udp://198.51.100.9:21010"]
+        )
+
+        try await engine.start(configuration: config)
+        defer {
+            Task { await engine.stop() }
+        }
+
+        let data = try XCTUnwrap(engine.runningInfoData())
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let nodeInfo = json?["my_node_info"] as? [String: Any]
+        let listeners = nodeInfo?["listeners"] as? [[String: Any]]
+        let urls = listeners?.compactMap { $0["url"] as? String }
+
+        XCTAssertEqual(urls, ["udp://0.0.0.0:11010", "udp://198.51.100.9:21010"])
+    }
 }

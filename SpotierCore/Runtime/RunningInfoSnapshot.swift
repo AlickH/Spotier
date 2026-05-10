@@ -67,7 +67,7 @@ struct RunningInfoSnapshot: Codable, Equatable {
 
         return RunningInfoSnapshot(
             devName: localIdentity?.hostname ?? "",
-            myNodeInfo: localIdentity.map { NodeInfo(identity: $0) },
+            myNodeInfo: localIdentity.map { NodeInfo(identity: $0, configuration: configuration) },
             events: events.map(\.runningInfoText),
             routes: routeRows,
             peers: peerRows,
@@ -97,13 +97,15 @@ extension RunningInfoSnapshot {
         var listeners: [URLString]?
         var vpnPortalConfig: String?
 
-        init(identity: NodeIdentity) {
+        init(identity: NodeIdentity, configuration: MeshEngineConfiguration?) {
             virtualIPv4 = identity.virtualIPv4.flatMap(IPv4CIDR.init)
             hostname = identity.hostname
             version = "swift-core"
-            ips = IPList(listeners: [])
+            let configuredListeners = (configuration?.listeners ?? []) + (configuration?.mappedListeners ?? [])
+            let listenerURLs = configuredListeners.map(URLString.init(url:))
+            ips = IPList(listeners: listenerURLs)
             stunInfo = STUNInfo()
-            listeners = []
+            listeners = listenerURLs
             vpnPortalConfig = nil
         }
 
