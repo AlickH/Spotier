@@ -228,6 +228,79 @@ final class MeshIntegrationTests: XCTestCase {
         XCTAssertEqual(engineB.routeTable.bestRoute(for: "192.168.55.8")?.kind, .subnetProxy)
     }
 
+    func testEndpointCandidateIsSentAfterSessionEstablishes() async throws {
+        let transportA = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19140))
+        let transportB = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19141))
+        transportA.connect(to: transportB)
+        let engineA = MeshEngine(transport: transportA, deviceSeed: Data(repeating: 1, count: 32))
+        let engineB = MeshEngine(transport: transportB, deviceSeed: Data(repeating: 2, count: 32))
+        defer {
+            Task {
+                await engineA.stop()
+                await engineB.stop()
+            }
+        }
+
+        try await engineA.start(configuration: MeshEngineConfiguration(
+            networkName: "easytier",
+            networkSecret: "secret",
+            virtualIPv4: "10.0.0.1/24",
+            listeners: ["udp://127.0.0.1:20140"],
+            mtu: 1380
+        ))
+        try await engineB.start(configuration: MeshEngineConfiguration(
+            networkName: "easytier",
+            networkSecret: "secret",
+            virtualIPv4: "10.0.0.2/24",
+            listeners: ["udp://127.0.0.1:20141"],
+            mtu: 1380
+        ))
+        try await exchangeHello(from: engineB, transport: transportB, to: engineA, endpoint: transportA.endpoint)
+
+        let peerID = try XCTUnwrap(engineA.localIdentity?.peerID)
+        try await waitUntil(
+            engineB.peerStore.peer(id: peerID)?.knownEndpoints.contains(TransportEndpoint(host: "127.0.0.1", port: 20140)) == true,
+            timeout: .milliseconds(500)
+        )
+    }
+
+    func testDisabledUDPHolePunchingDoesNotSendEndpointCandidateAfterSessionEstablishes() async throws {
+        let transportA = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19142))
+        let transportB = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19143))
+        transportA.connect(to: transportB)
+        let engineA = MeshEngine(transport: transportA, deviceSeed: Data(repeating: 1, count: 32))
+        let engineB = MeshEngine(transport: transportB, deviceSeed: Data(repeating: 2, count: 32))
+        defer {
+            Task {
+                await engineA.stop()
+                await engineB.stop()
+            }
+        }
+
+        try await engineA.start(configuration: MeshEngineConfiguration(
+            networkName: "easytier",
+            networkSecret: "secret",
+            virtualIPv4: "10.0.0.1/24",
+            listeners: ["udp://127.0.0.1:20142"],
+            mtu: 1380,
+            disableUDPHolePunching: true
+        ))
+        try await engineB.start(configuration: MeshEngineConfiguration(
+            networkName: "easytier",
+            networkSecret: "secret",
+            virtualIPv4: "10.0.0.2/24",
+            listeners: ["udp://127.0.0.1:20143"],
+            mtu: 1380
+        ))
+        try await exchangeHello(from: engineB, transport: transportB, to: engineA, endpoint: transportA.endpoint)
+
+        let peerID = try XCTUnwrap(engineA.localIdentity?.peerID)
+        try? await Task.sleep(for: .milliseconds(100))
+        XCTAssertFalse(
+            engineB.peerStore.peer(id: peerID)?.knownEndpoints.contains(TransportEndpoint(host: "127.0.0.1", port: 20142)) == true
+        )
+    }
+
     private func routeUpdatePayload(
         ipv4Address: String?,
         ipv6Address: String?,

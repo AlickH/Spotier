@@ -17,6 +17,7 @@ final class MeshEngine {
     private var transportReadTask: Task<Void, Never>?
     private var nextSequence: UInt64 = 1
     private var advertisedRoutePeers = Set<PeerID>()
+    private var endpointCandidatePeers = Set<PeerID>()
 
     init(transport: (any Transport)? = nil, deviceSeed: Data = Data("spotier.swift.core.device".utf8)) {
         injectedTransport = transport
@@ -84,6 +85,7 @@ final class MeshEngine {
         routeTable = RouteTable()
         nextSequence = 1
         advertisedRoutePeers.removeAll()
+        endpointCandidatePeers.removeAll()
         setStatus(.stopped)
     }
 
@@ -179,6 +181,7 @@ final class MeshEngine {
                 for response in responses {
                     try await transport?.send(response, to: inbound.remoteEndpoint)
                 }
+                try await sendEndpointCandidateIfNeeded(to: inbound.frame.sender, endpoint: inbound.remoteEndpoint)
                 try await sendAdvertisedRoutesIfNeeded(to: inbound.frame.sender, endpoint: inbound.remoteEndpoint)
             case .data(let packet):
                 guard let session = peerManager?.session(for: inbound.frame.sender),
@@ -224,6 +227,26 @@ final class MeshEngine {
         }
         try await sendAdvertisedRoutes(to: peerID, endpoint: endpoint)
         advertisedRoutePeers.insert(peerID)
+    }
+
+    private func sendEndpointCandidateIfNeeded(to peerID: PeerID, endpoint: TransportEndpoint) async throws {
+        guard endpointCandidatePeers.contains(peerID) == false,
+              peerManager?.session(for: peerID)?.health == .established,
+              let candidate = try configuredUDPEndpoint() else {
+            return
+        }
+        guard var frame = peerManager?.publishEndpointCandidate(candidate, to: peerID) else { return }
+        frame.sequence = nextSequence
+        nextSequence += 1
+        try await transport?.send(frame, to: endpoint)
+        endpointCandidatePeers.insert(peerID)
+    }
+
+    private func configuredUDPEndpoint() throws -> TransportEndpoint? {
+        guard let listener = configuration?.listeners.first(where: { URL(string: $0)?.scheme == "udp" }) else {
+            return nil
+        }
+        return try TransportEndpoint(urlString: listener)
     }
 
     private func syncPeerState() {
