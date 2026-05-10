@@ -11,17 +11,24 @@ struct ConfigGeneratorAdvancedForm: View {
 
     var body: some View {
         Form {
-            generalSection
-            overrideDNSSection
-            proxySubnetSection
-            vpnPortalSection
-            listenersSection
-            relayWhitelistSection
-            manualRoutesSection
-            socks5Section
-            exitNodesSection
-            mappedListenersSection
-            featureToggleSection
+            ForEach(ConfigGeneratorAdvancedSection.allCases, id: \.self) { section in
+                switch section {
+                case .general:
+                    generalSection
+                case .proxySubnet:
+                    proxySubnetSection
+                case .listeners:
+                    listenersSection
+                case .manualRoutes:
+                    manualRoutesSection
+                case .exitNodes:
+                    exitNodesSection
+                case .mappedListeners:
+                    mappedListenersSection
+                case .featureToggle:
+                    featureToggleSection
+                }
+            }
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
@@ -304,32 +311,34 @@ struct ConfigGeneratorAdvancedForm: View {
 
     private var featureToggleSection: some View {
         SwiftUI.Section(header: Text(LocalizedStringKey("功能开关"))) {
-            toggleRow("延迟优先模式", "忽略中转跳数，选择总延迟最低的路径。", isOn: $model.latencyFirst)
-            toggleRow("使用用户态协议栈", "使用用户态 TCP/IP 协议栈，避免操作系统防火墙问题导致无法子网代理 / KCP 代理。", isOn: $model.useSmoltcp)
-            toggleRow("禁用 IPv6", "禁用此节点的 IPv6 功能，仅使用 IPv4 进行网络通信。", isOn: Binding(
-                get: { !model.enableIPv6 },
-                set: { model.enableIPv6 = !$0 }
-            ))
-            toggleRow("启用 KCP 代理", "将 TCP 流量转为 KCP 流量，降低传输延迟，提升传输速度。", isOn: $model.enableKcpProxy)
-            toggleRow("禁用 KCP 输入", "禁用 KCP 入站流量，其他开启 KCP 代理的节点仍然使用 TCP 连接到本节点。", isOn: $model.disableKcpInput)
-            toggleRow("启用 QUIC 代理", "将 TCP 流量转为 QUIC 流量，降低传输延迟，提升传输速度。", isOn: $model.enableQuicProxy)
-            toggleRow("禁用 QUIC 输入", "禁用 QUIC 入站流量，其他开启 QUIC 代理的节点仍然使用 TCP 连接到本节点。", isOn: $model.disableQuicInput)
-            toggleRow("禁用 P2P", "禁用 P2P 模式，所有流量通过手动指定的服务器中转。", isOn: $model.disableP2P)
-            toggleRow("仅 P2P", "仅与已经建立 P2P 连接的对等节点通信，不通过其他节点中转。", isOn: $model.onlyP2P)
-            toggleRow("仅使用物理网卡", "仅使用物理网卡，避免 Swiftier 通过其他虚拟网建立连接。", isOn: $model.bindDevice)
-            toggleRow("无 TUN 模式", "不使用 TUN 网卡，适合无管理员权限时使用。本节点仅允许被访问。访问其他节点需要使用 SOCKS5。", isOn: $model.noTun)
-            toggleRow("启用出口节点", "允许此节点成为出口节点。", isOn: $model.enableExitNode)
-            toggleRow("转发 RPC 包", "允许转发所有对等节点的 RPC 数据包，即使对等节点不在转发网络白名单中。这可以帮助白名单外网络中的对等节点建立 P2P 连接。", isOn: $model.relayAllPeerRpc)
-            toggleRow("启用多线程", "使用多线程运行时。", isOn: $model.multiThread)
-            toggleRow("系统转发", "通过系统内核转发子网代理数据包，禁用内置 NAT。", isOn: $model.proxyForwardBySystem)
-            toggleRow("禁用加密", "禁用对等节点通信的加密，默认为 false，必须与对等节点相同。", isOn: Binding(
-                get: { !model.enableEncryption },
-                set: { model.enableEncryption = !$0 }
-            ))
-            toggleRow("禁用 UDP 打洞", "禁用 UDP 打洞功能。", isOn: $model.disableUdpHolePunching)
-            toggleRow("禁用对称 NAT 打洞", "禁用对标 NAT 的打洞 (生日攻击)，将对称 NAT 视为锥形 NAT 处理。", isOn: $model.disableSymHolePunching)
-            toggleRow("启用 Magic DNS", "启用魔法 DNS，允许通过 Swiftier 的 DNS 服务器访问其他节点的虚拟 IPv4 地址，例如：node1.et.net。", isOn: $model.enableMagicDns)
-            toggleRow("启用私有模式", "启用私有模式，则不允许使用了与本网络不同的网络名称和密码的节点通过本节点进行握手或中转。", isOn: $model.enablePrivateMode)
+            ForEach(ConfigGeneratorFeatureToggle.allCases, id: \.self) { toggle in
+                switch toggle {
+                case .latencyFirst:
+                    toggleRow("延迟优先模式", "忽略中转跳数，选择总延迟最低的路径。", isOn: $model.latencyFirst)
+                case .disableIPv6:
+                    toggleRow("禁用 IPv6", "禁用此节点的 IPv6 功能，仅使用 IPv4 进行网络通信。", isOn: Binding(
+                        get: { !model.enableIPv6 },
+                        set: { model.enableIPv6 = !$0 }
+                    ))
+                case .disableP2P:
+                    toggleRow("禁用 P2P", "禁用 P2P 模式，所有流量通过手动指定的服务器中转。", isOn: $model.disableP2P)
+                case .onlyP2P:
+                    toggleRow("仅 P2P", "仅与已经建立 P2P 连接的对等节点通信，不通过其他节点中转。", isOn: $model.onlyP2P)
+                case .enableExitNode:
+                    toggleRow("启用出口节点", "允许此节点成为出口节点。", isOn: $model.enableExitNode)
+                case .disableEncryption:
+                    toggleRow("禁用加密", "禁用对等节点通信的加密，默认为 false，必须与对等节点相同。", isOn: Binding(
+                        get: { !model.enableEncryption },
+                        set: { model.enableEncryption = !$0 }
+                    ))
+                case .disableUdpHolePunching:
+                    toggleRow("禁用 UDP 打洞", "禁用 UDP 打洞功能。", isOn: $model.disableUdpHolePunching)
+                case .enableMagicDNS:
+                    toggleRow("启用 Magic DNS", "启用魔法 DNS，允许通过 Swiftier 的 DNS 服务器访问其他节点的虚拟 IPv4 地址，例如：node1.et.net。", isOn: $model.enableMagicDns)
+                case .enablePrivateMode:
+                    toggleRow("启用私有模式", "启用私有模式，则不允许使用了与本网络不同的网络名称和密码的节点通过本节点进行握手或中转。", isOn: $model.enablePrivateMode)
+                }
+            }
         }
     }
 

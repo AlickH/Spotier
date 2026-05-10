@@ -146,3 +146,25 @@ enum ConfigScreen: CaseIterable {
     case main
     case advanced
 }
+
+enum ConfigGeneratorAdvancedSection: CaseIterable {
+    case general
+    case proxySubnet
+    case listeners
+    case manualRoutes
+    case exitNodes
+    case mappedListeners
+    case featureToggle
+}
+
+enum ConfigGeneratorFeatureToggle: CaseIterable {
+    case latencyFirst
+    case disableIPv6
+    case disableP2P
+    case onlyP2P
+    case enableExitNode
+    case disableEncryption
+    case disableUdpHolePunching
+    case enableMagicDNS
+    case enablePrivateMode
+}

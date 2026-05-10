@@ -65,4 +65,15 @@ final class ConfigGeneratorBehaviorTests: XCTestCase {
     func testNewConfigNavigationOnlyExposesSwiftCoreGeneratedScreens() {
         XCTAssertEqual(ConfigScreen.allCases, [.main, .advanced])
     }
+
+    func testAdvancedSectionsOnlyExposeSwiftCoreGeneratedFields() {
+        XCTAssertEqual(
+            ConfigGeneratorAdvancedSection.allCases,
+            [.general, .proxySubnet, .listeners, .manualRoutes, .exitNodes, .mappedListeners, .featureToggle]
+        )
+        XCTAssertEqual(
+            ConfigGeneratorFeatureToggle.allCases,
+            [.latencyFirst, .disableIPv6, .disableP2P, .onlyP2P, .enableExitNode, .disableEncryption, .disableUdpHolePunching, .enableMagicDNS, .enablePrivateMode]
+        )
+    }
 }
