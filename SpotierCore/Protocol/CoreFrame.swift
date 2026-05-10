@@ -13,6 +13,7 @@ enum CoreFramePayload: Equatable {
 struct CoreFrame: Equatable {
     static let protocolVersion: UInt8 = 1
     static let headerLength = 32
+    static let exitNodeFlag: UInt16 = 1 << 0
 
     var type: CoreFrameType
     var flags: UInt16

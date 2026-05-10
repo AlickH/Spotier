@@ -5,6 +5,7 @@ final class InMemoryTransport: Transport {
     let endpoint: TransportEndpoint
     let inboundFrames: AsyncStream<TransportInboundFrame>
 
+    private(set) var sentFrames: [CoreFrame] = []
     private var continuation: AsyncStream<TransportInboundFrame>.Continuation?
     private var peers: [TransportEndpoint: InMemoryTransport] = [:]
 
@@ -30,6 +31,7 @@ final class InMemoryTransport: Transport {
         guard let peer = peers[endpoint] else {
             throw TransportError.sendFailed
         }
+        sentFrames.append(frame)
         peer.continuation?.yield(TransportInboundFrame(frame: frame, remoteEndpoint: self.endpoint))
     }
 }

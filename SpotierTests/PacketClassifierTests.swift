@@ -83,6 +83,68 @@ final class PacketClassifierTests: XCTestCase {
         XCTAssertEqual(PacketRouter(routeTable: RouteTable()).route(packet), .drop)
     }
 
+    func testExternalIPv4UsesFirstAvailableExitNodeInConfiguredOrder() throws {
+        let packet = try PacketClassifier.parse(ipv4Packet(
+            source: [10, 126, 126, 4],
+            destination: [203, 0, 113, 10],
+            protocolNumber: 6,
+            payload: []
+        ))
+        var table = RouteTable()
+        table.apply(RouteUpdate(
+            peerID: PeerID(1),
+            ipv4Address: "10.126.126.9",
+            ipv6Address: nil,
+            nextHopPeerID: PeerID(1),
+            cost: 1,
+            proxyCIDRs: []
+        ))
+        table.apply(RouteUpdate(
+            peerID: PeerID(2),
+            ipv4Address: "10.126.126.10",
+            ipv6Address: nil,
+            nextHopPeerID: PeerID(2),
+            cost: 1,
+            proxyCIDRs: []
+        ))
+
+        let router = PacketRouter(
+            routeTable: table,
+            localIPv4: "10.126.126.4",
+            localIPv6: nil,
+            exitNodes: ["10.126.126.10", "10.126.126.9"]
+        )
+
+        XCTAssertEqual(router.route(packet), .exitNode(PeerID(2)))
+    }
+
+    func testSameVirtualIPv4NetworkUnknownPeerDoesNotUseExitNode() throws {
+        let packet = try PacketClassifier.parse(ipv4Packet(
+            source: [10, 126, 126, 4],
+            destination: [10, 126, 126, 99],
+            protocolNumber: 6,
+            payload: []
+        ))
+        var table = RouteTable()
+        table.apply(RouteUpdate(
+            peerID: PeerID(2),
+            ipv4Address: "10.126.126.10",
+            ipv6Address: nil,
+            nextHopPeerID: PeerID(2),
+            cost: 1,
+            proxyCIDRs: []
+        ))
+
+        let router = PacketRouter(
+            routeTable: table,
+            localIPv4: "10.126.126.4/24",
+            localIPv6: nil,
+            exitNodes: ["10.126.126.10"]
+        )
+
+        XCTAssertEqual(router.route(packet), .drop)
+    }
+
     func testRejectsNonIPPacket() {
         XCTAssertThrowsError(try PacketClassifier.parse(Data([0x10, 0x00]))) { error in
             XCTAssertEqual(error as? IPPacketError, .nonIPPacket)

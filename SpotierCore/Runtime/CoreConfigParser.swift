@@ -77,7 +77,9 @@ enum CoreConfigParser {
         let listeners = parseStringArray(topLevel["listeners"] ?? "")
         let mappedListeners = parseStringArray(topLevel["mapped_listeners"] ?? "")
         let advertisedRoutes = parseStringArray(topLevel["routes"] ?? "")
+        let exitNodes = parseStringArray(topLevel["exit_nodes"] ?? "")
         let mtu = Int(flags["mtu"] ?? topLevel["mtu"] ?? "") ?? 1380
+        let enableExitNode = boolValue(flags["enable_exit_node"] ?? topLevel["enable_exit_node"])
         let disableIPv6 = boolValue(flags["disable_ipv6"] ?? topLevel["disable_ipv6"])
         let disableP2P = boolValue(flags["disable_p2p"] ?? topLevel["disable_p2p"])
         let disableUDPHolePunching = boolValue(flags["disable_udp_hole_punching"] ?? topLevel["disable_udp_hole_punching"])
@@ -93,6 +95,8 @@ enum CoreConfigParser {
             listeners: listeners,
             mappedListeners: mappedListeners,
             advertisedRoutes: advertisedRoutes,
+            exitNodes: exitNodes,
+            enableExitNode: enableExitNode,
             mtu: mtu,
             disableP2P: disableP2P,
             disableUDPHolePunching: disableUDPHolePunching

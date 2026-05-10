@@ -11,6 +11,7 @@ final class CoreConfigParserTests: XCTestCase {
         mapped_listeners = ["udp://198.51.100.9:21010"]
         ipv4 = "10.126.126.4/24"
         routes = ["192.168.50.0/24", "10.88.0.0/16"]
+        exit_nodes = ["10.126.126.9", "fd00::9"]
 
         [network_identity]
         network_name = "easytier"
@@ -22,6 +23,7 @@ final class CoreConfigParserTests: XCTestCase {
         [flags]
         mtu = 1380
         enable_magic_dns = true
+        enable_exit_node = true
         """)
 
         XCTAssertEqual(result.configuration.networkName, "easytier")
@@ -36,6 +38,8 @@ final class CoreConfigParserTests: XCTestCase {
         XCTAssertEqual(result.configuration.mappedListeners, ["udp://198.51.100.9:21010"])
         XCTAssertEqual(result.configuration.mtu, 1380)
         XCTAssertEqual(result.configuration.advertisedRoutes, ["192.168.50.0/24", "10.88.0.0/16"])
+        XCTAssertEqual(result.configuration.exitNodes, ["10.126.126.9", "fd00::9"])
+        XCTAssertTrue(result.configuration.enableExitNode)
         XCTAssertEqual(result.hints.ipv4, "10.126.126.4")
         XCTAssertEqual(result.hints.subnet, "255.255.255.0")
         XCTAssertTrue(result.hints.magicDNS)

@@ -10,6 +10,8 @@ struct MeshEngineConfiguration: Equatable {
     var listeners: [String]
     var mappedListeners: [String]
     var advertisedRoutes: [String]
+    var exitNodes: [String]
+    var enableExitNode: Bool
     var mtu: Int
     var disableP2P: Bool
     var disableUDPHolePunching: Bool
@@ -24,6 +26,8 @@ struct MeshEngineConfiguration: Equatable {
         listeners: [String] = [],
         mappedListeners: [String] = [],
         advertisedRoutes: [String] = [],
+        exitNodes: [String] = [],
+        enableExitNode: Bool = false,
         mtu: Int = 1380,
         disableP2P: Bool = false,
         disableUDPHolePunching: Bool = false
@@ -37,6 +41,8 @@ struct MeshEngineConfiguration: Equatable {
         self.listeners = listeners
         self.mappedListeners = mappedListeners
         self.advertisedRoutes = advertisedRoutes
+        self.exitNodes = exitNodes
+        self.enableExitNode = enableExitNode
         self.mtu = mtu
         self.disableP2P = disableP2P
         self.disableUDPHolePunching = disableUDPHolePunching

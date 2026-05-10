@@ -116,7 +116,8 @@ final class MeshEngine {
             let decision = PacketRouter(
                 routeTable: routeTable,
                 localIPv4: localIdentity?.virtualIPv4,
-                localIPv6: localIdentity?.virtualIPv6
+                localIPv6: localIdentity?.virtualIPv6,
+                exitNodes: configuration?.exitNodes ?? []
             ).route(parsedPacket)
             try await forward(packet, decision: decision)
         } catch {
@@ -257,12 +258,17 @@ final class MeshEngine {
 
     private func forward(_ packet: PacketTunnelPacket, decision: PacketRouteDecision) async throws {
         let peerID: PeerID
+        let frameFlags: UInt16
         switch decision {
         case .local:
             emitPacket(packet)
             return
         case .peer(let id), .subnetProxy(let id):
             peerID = id
+            frameFlags = 0
+        case .exitNode(let id):
+            peerID = id
+            frameFlags = CoreFrame.exitNodeFlag
         case .drop:
             events.append(.logLine("Dropped unrouted packet"))
             return
@@ -281,6 +287,7 @@ final class MeshEngine {
         let encrypted = try crypto.encrypt(sequence: sequence, plaintext: packet.data)
         let frame = CoreFrame(
             type: .data,
+            flags: frameFlags,
             sender: localIdentity.peerID,
             receiver: peerID,
             sequence: sequence,
