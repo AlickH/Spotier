@@ -42,6 +42,24 @@ final class MagicDNSResponderTests: XCTestCase {
         XCTAssertNil(responder.response(to: dnsQueryPacket(name: "peer.example.com", sourcePort: 53001)))
     }
 
+    func testReturnsNXDomainForUnknownHostnameInConfiguredZone() throws {
+        let responder = MagicDNSResponder(
+            resolverIPv4: "100.100.100.101",
+            zone: "et.net",
+            records: ["peer": "10.0.0.2"]
+        )
+
+        let response = try XCTUnwrap(responder.response(to: dnsQueryPacket(name: "missing.et.net", sourcePort: 53001)))
+
+        XCTAssertEqual(response[20], 0)
+        XCTAssertEqual(response[21], 53)
+        XCTAssertEqual(response[22], 207)
+        XCTAssertEqual(response[23], 9)
+        XCTAssertEqual(response.readUInt16(at: 30), 0x8183)
+        XCTAssertEqual(response.readUInt16(at: 32), 1)
+        XCTAssertEqual(response.readUInt16(at: 34), 0)
+    }
+
     private func dnsQueryPacket(name: String, sourcePort: UInt16) -> Data {
         let dnsPayload = dnsQueryPayload(name: name)
         var udp = Data()

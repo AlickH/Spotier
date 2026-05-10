@@ -39,11 +39,16 @@ struct MagicDNSResponder {
         guard let query = DNSQuery(packet: packet, offset: dnsOffset),
               query.type == 1,
               query.classCode == 1,
-              let address = records[normalizedName(query.name)] else {
+              let hostname = hostnameInZone(query.name) else {
             return nil
         }
 
-        let dnsPayload = dnsResponsePayload(query: query, address: address)
+        let dnsPayload: Data
+        if let address = records[hostname] {
+            dnsPayload = dnsSuccessPayload(query: query, address: address)
+        } else {
+            dnsPayload = dnsNXDomainPayload(query: query)
+        }
         var udpPayload = Data()
         udpPayload.appendUInt16(53)
         udpPayload.appendUInt16(sourcePort)
@@ -58,14 +63,14 @@ struct MagicDNSResponder {
         )
     }
 
-    private func normalizedName(_ name: String) -> String {
+    private func hostnameInZone(_ name: String) -> String? {
         let lowercased = name.lowercased()
         let suffix = ".\(zone.lowercased())"
-        guard lowercased.hasSuffix(suffix) else { return lowercased }
+        guard lowercased.hasSuffix(suffix) else { return nil }
         return String(lowercased.dropLast(suffix.count))
     }
 
-    private func dnsResponsePayload(query: DNSQuery, address: String) -> Data {
+    private func dnsSuccessPayload(query: DNSQuery, address: String) -> Data {
         var data = Data()
         data.appendUInt16(query.id)
         data.appendUInt16(0x8180)
@@ -80,6 +85,18 @@ struct MagicDNSResponder {
         data.appendUInt32(30)
         data.appendUInt16(4)
         data.append(contentsOf: address.split(separator: ".").compactMap { UInt8($0) })
+        return data
+    }
+
+    private func dnsNXDomainPayload(query: DNSQuery) -> Data {
+        var data = Data()
+        data.appendUInt16(query.id)
+        data.appendUInt16(0x8183)
+        data.appendUInt16(1)
+        data.appendUInt16(0)
+        data.appendUInt16(0)
+        data.appendUInt16(0)
+        data.append(query.question)
         return data
     }
 
