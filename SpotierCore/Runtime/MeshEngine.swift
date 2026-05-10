@@ -78,6 +78,9 @@ final class MeshEngine {
         configuration = nil
         localIdentity = nil
         peerManager = nil
+        peerStore = PeerStore()
+        routeTable = RouteTable()
+        nextSequence = 1
         setStatus(.stopped)
     }
 

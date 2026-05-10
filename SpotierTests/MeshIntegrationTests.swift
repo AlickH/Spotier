@@ -157,6 +157,32 @@ final class MeshIntegrationTests: XCTestCase {
         XCTAssertEqual(engineA.routeTable.bestRoute(for: "192.168.77.9")?.cost, 2)
     }
 
+    func testStopClearsMeshStateFromRunningInfo() async throws {
+        let transportA = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19140))
+        let transportB = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19141))
+        transportA.connect(to: transportB)
+        let engineA = MeshEngine(transport: transportA, deviceSeed: Data(repeating: 1, count: 32))
+        let engineB = MeshEngine(transport: transportB, deviceSeed: Data(repeating: 2, count: 32))
+        defer {
+            Task { await engineB.stop() }
+        }
+
+        try await engineA.start(configuration: configuration(ipv4: "10.0.0.1/24", ipv6: "fd00:0:0:0:0:0:0:1"))
+        try await engineB.start(configuration: configuration(ipv4: "10.0.0.2/24", ipv6: "fd00:0:0:0:0:0:0:2"))
+        try await exchangeHello(from: engineB, transport: transportB, to: engineA, endpoint: transportA.endpoint)
+        try await waitUntil(engineA.routeTable.bestRoute(for: "10.0.0.2") != nil, timeout: .milliseconds(500))
+
+        await engineA.stop()
+
+        let data = try XCTUnwrap(engineA.runningInfoData())
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        XCTAssertEqual(json?["running"] as? Bool, false)
+        XCTAssertNil(json?["my_node_info"] as? [String: Any])
+        XCTAssertEqual((json?["peers"] as? [[String: Any]])?.count, 0)
+        XCTAssertEqual((json?["routes"] as? [[String: Any]])?.count, 0)
+        XCTAssertEqual((json?["peer_route_pairs"] as? [[String: Any]])?.count, 0)
+    }
+
     private func routeUpdatePayload(
         ipv4Address: String?,
         ipv6Address: String?,
