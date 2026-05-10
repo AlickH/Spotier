@@ -81,12 +81,23 @@ struct RouteTable: Equatable {
         routes
             .filter { routeContains($0.destination, address: address) }
             .sorted { lhs, rhs in
+                let lhsPrefix = routePrefixLength(lhs.destination) ?? 0
+                let rhsPrefix = routePrefixLength(rhs.destination) ?? 0
+                if lhsPrefix != rhsPrefix {
+                    return lhsPrefix > rhsPrefix
+                }
                 if lhs.cost != rhs.cost {
                     return lhs.cost < rhs.cost
                 }
                 return lhs.updatedAt > rhs.updatedAt
             }
             .first
+    }
+
+    private func routePrefixLength(_ destination: String) -> Int? {
+        let parts = destination.split(separator: "/", maxSplits: 1)
+        guard parts.count == 2 else { return nil }
+        return Int(parts[1])
     }
 
     private func hostDestination(from address: String, defaultPrefix: Int) -> String {

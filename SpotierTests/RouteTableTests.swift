@@ -71,6 +71,54 @@ final class RouteTableTests: XCTestCase {
         XCTAssertEqual(table.bestRoute(for: "192.168.1.10")?.ownerPeerID, PeerID(3))
     }
 
+    func testMoreSpecificSubnetRouteWinsBeforeCost() {
+        var table = RouteTable()
+        let base = Date(timeIntervalSince1970: 100)
+
+        table.apply(RouteUpdate(
+            peerID: PeerID(1),
+            ipv4Address: nil,
+            ipv6Address: nil,
+            nextHopPeerID: PeerID(1),
+            cost: 1,
+            proxyCIDRs: ["192.168.0.0/16"]
+        ), now: base)
+        table.apply(RouteUpdate(
+            peerID: PeerID(2),
+            ipv4Address: nil,
+            ipv6Address: nil,
+            nextHopPeerID: PeerID(2),
+            cost: 10,
+            proxyCIDRs: ["192.168.1.0/24"]
+        ), now: base.addingTimeInterval(1))
+
+        XCTAssertEqual(table.bestRoute(for: "192.168.1.10")?.ownerPeerID, PeerID(2))
+    }
+
+    func testMoreSpecificIPv6SubnetRouteWinsBeforeCost() {
+        var table = RouteTable()
+        let base = Date(timeIntervalSince1970: 100)
+
+        table.apply(RouteUpdate(
+            peerID: PeerID(1),
+            ipv4Address: nil,
+            ipv6Address: nil,
+            nextHopPeerID: PeerID(1),
+            cost: 1,
+            proxyCIDRs: ["fd10:20::/32"]
+        ), now: base)
+        table.apply(RouteUpdate(
+            peerID: PeerID(2),
+            ipv4Address: nil,
+            ipv6Address: nil,
+            nextHopPeerID: PeerID(2),
+            cost: 10,
+            proxyCIDRs: ["fd10:20:30:40::/64"]
+        ), now: base.addingTimeInterval(1))
+
+        XCTAssertEqual(table.bestRoute(for: "fd10:20:30:40::1234")?.ownerPeerID, PeerID(2))
+    }
+
     func testIPv6SubnetProxyRouteMatchesPrefix() {
         var table = RouteTable()
         table.apply(RouteUpdate(
