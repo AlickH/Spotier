@@ -202,6 +202,19 @@ final class MeshIntegrationTests: XCTestCase {
         XCTAssertEqual(engine.localIdentity?.hostname, "office-node")
     }
 
+    func testEngineUsesStableDefaultHostnameWhenInstanceNameIsMissing() async throws {
+        let engine = MeshEngine()
+        try await engine.start(configuration: MeshEngineConfiguration(
+            networkName: "easytier",
+            networkSecret: "secret"
+        ))
+        defer {
+            Task { await engine.stop() }
+        }
+
+        XCTAssertEqual(engine.localIdentity?.hostname, "spotier")
+    }
+
     func testMagicDNSQueryEmitsLocalDNSResponse() async throws {
         let engine = MeshEngine(deviceSeed: Data(repeating: 1, count: 32))
         try await engine.start(configuration: MeshEngineConfiguration(
