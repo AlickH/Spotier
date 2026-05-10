@@ -480,6 +480,16 @@
 - [x] tvOS build passes if target exists. Current project has no tvOS scheme or target.
 - [x] The app and extension contain no Rust build dependency needed for runtime. `EasyTierCore/` source still exists because `EasyTierCore/easytier-patched` has pre-existing uncommitted changes.
 
+## Post-Plan EasyTier Parity Hardening
+
+- [x] Reject data frames addressed to broadcast; only broadcast `hello` control frames are accepted.
+- [x] Prefer the longest matching subnet route before route cost, matching Rust LPM route lookup behavior.
+- [x] Ignore `peerPing` from unknown peers instead of creating a control-plane response outside an existing peer connection.
+- [x] Keep `routeUpdate` from refreshing peer liveness before authenticated session checks.
+- [x] Sort running-info route rows by IPv4 address for deterministic Rust-compatible output.
+- [x] Skip invalid MagicDNS hostnames while preserving Unicode hostname records.
+- [x] Drop IPv6 packets from foreign link-local sources unless the source is the configured local IPv6 address.
+
 ## Explicitly Out Of Scope
 
 - [x] No Linux support.
