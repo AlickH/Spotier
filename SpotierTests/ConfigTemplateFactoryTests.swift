@@ -18,6 +18,6 @@ final class ConfigTemplateFactoryTests: XCTestCase {
         XCTAssertTrue(content.contains("instance_id = \"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\""))
         XCTAssertTrue(content.contains("listeners = [\"udp://0.0.0.0:11010\"]"))
         XCTAssertTrue(content.contains("network_name = \"easytier\""))
-        XCTAssertTrue(content.contains("uri = \"udp://public.easytier.top:11010\""))
+        XCTAssertFalse(content.contains("[[peer]]"))
     }
 }

@@ -23,9 +23,6 @@ enum ConfigTemplateFactory {
         network_name = "easytier"
         network_secret = ""
 
-        [[peer]]
-        uri = "udp://public.easytier.top:11010"
-
         [flags]
         mtu = 1380
         disable_ipv6 = false

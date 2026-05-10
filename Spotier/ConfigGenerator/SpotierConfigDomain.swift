@@ -40,9 +40,9 @@ struct SpotierConfigModel: Equatable {
     var networkName: String = "easytier"
     var networkSecret: String = ""
 
-    var peerMode: PeerMode = .publicServer
+    var peerMode: PeerMode = .standalone
     var manualPeers: [EditableStringItem] = [
-        EditableStringItem(value: "udp://public.easytier.top:11010")
+        EditableStringItem(value: "udp://")
     ]
 
     var listeners: [EditableStringItem] = Array(values: SpotierConfigModel.defaultListenerValues)

@@ -79,6 +79,19 @@ final class ConfigGeneratorStoreTests: XCTestCase {
         XCTAssertNotEqual(result.model.instanceId, draft.instanceId)
     }
 
+    func testNewConfigDefaultsToStandaloneSwiftCoreMode() {
+        let result = ConfigGeneratorStore.loadModel(
+            editingFileURL: nil,
+            forceReset: true,
+            currentModel: SpotierConfigModel(),
+            lastLoadedURL: nil
+        )
+
+        XCTAssertEqual(result.model.peerMode, .standalone)
+        XCTAssertEqual(result.model.listeners.values, ["udp://0.0.0.0:11010"])
+        XCTAssertEqual(result.model.manualPeers.values, ["udp://"])
+    }
+
     func testSaveDraftAndClearDraftDelegateToDraftStore() {
         let editingURL = URL(fileURLWithPath: "/tmp/example.toml")
         var draft = SpotierConfigModel()

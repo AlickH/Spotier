@@ -492,7 +492,7 @@ struct ConfigGeneratorMainForm: View {
                 HStack {
                     Text(LocalizedStringKey("服务器"))
                     Spacer()
-                    Text("udp://public.easytier.top:11010")
+                    Text(LocalizedStringKey("Swift core does not use EasyTier public servers"))
                         .foregroundColor(.secondary)
                         .font(.caption)
                 }

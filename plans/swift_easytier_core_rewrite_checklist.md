@@ -496,7 +496,7 @@
 - [x] Compute IPv4 UDP checksums for MagicDNS DNS responses.
 - [x] Preserve IPv4 header length/options when MagicDNS rewrites DNS and ICMP responses.
 - [x] Skip non-UDP bootstrap peers in the UDP-only Swift transport path instead of silently sending UDP to TCP URLs.
-- [x] Generate new default configs with UDP listeners and UDP public peer URIs that match the Swift core bootstrap path.
+- [x] Generate new default configs in standalone Swift-core mode without EasyTier public server peers.
 - [x] Add a Swift Package entry point for `SpotierCore` covering iOS, tvOS, and macOS source-level builds.
 
 ## Explicitly Out Of Scope
