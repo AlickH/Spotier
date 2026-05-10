@@ -378,6 +378,33 @@ final class MeshIntegrationTests: XCTestCase {
         )
     }
 
+    func testExitNodeFlaggedFrameIsDroppedWhenExitNodeIsDisabled() async throws {
+        let packet = ipv4Packet(source: [10, 0, 0, 1], destination: [203, 0, 113, 10])
+        let received = try await receiveExitNodeFlaggedPacket(
+            packet,
+            receiverConfiguration: configuration(ipv4: "10.0.0.2/24", ipv6: "fd00:0:0:0:0:0:0:2")
+        )
+
+        XCTAssertNil(received)
+    }
+
+    func testExitNodeFlaggedFrameIsAcceptedWhenExitNodeIsEnabled() async throws {
+        let packet = ipv4Packet(source: [10, 0, 0, 1], destination: [203, 0, 113, 10])
+        let received = try await receiveExitNodeFlaggedPacket(
+            packet,
+            receiverConfiguration: MeshEngineConfiguration(
+                networkName: "easytier",
+                networkSecret: "secret",
+                virtualIPv4: "10.0.0.2/24",
+                virtualIPv6: "fd00:0:0:0:0:0:0:2",
+                enableExitNode: true,
+                mtu: 1380
+            )
+        )
+
+        XCTAssertEqual(received, PacketTunnelPacket(data: packet, protocolFamily: AF_INET))
+    }
+
     private func routeUpdatePayload(
         ipv4Address: String?,
         ipv6Address: String?,
@@ -445,6 +472,43 @@ final class MeshIntegrationTests: XCTestCase {
         )
         try await transport.send(frame, to: endpoint)
         try await waitUntil(remote.peerStore.peer(id: identity.peerID) != nil, timeout: .milliseconds(500))
+    }
+
+    private func receiveExitNodeFlaggedPacket(
+        _ packet: Data,
+        receiverConfiguration: MeshEngineConfiguration
+    ) async throws -> PacketTunnelPacket? {
+        let transportA = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19148))
+        let transportB = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19149))
+        transportA.connect(to: transportB)
+        let engineA = MeshEngine(transport: transportA, deviceSeed: Data(repeating: 1, count: 32))
+        let engineB = MeshEngine(transport: transportB, deviceSeed: Data(repeating: 2, count: 32))
+        defer {
+            Task {
+                await engineA.stop()
+                await engineB.stop()
+            }
+        }
+
+        try await engineA.start(configuration: MeshEngineConfiguration(
+            networkName: "easytier",
+            networkSecret: "secret",
+            virtualIPv4: "10.0.0.1/24",
+            exitNodes: ["10.0.0.2"],
+            mtu: 1380
+        ))
+        try await engineB.start(configuration: receiverConfiguration)
+        try await exchangeHello(from: engineA, transport: transportA, to: engineB, endpoint: transportB.endpoint)
+        try await exchangeHello(from: engineB, transport: transportB, to: engineA, endpoint: transportA.endpoint)
+        try await waitUntil(engineA.sessionEstablished(with: engineB), timeout: .milliseconds(500))
+        try await waitUntil(engineB.sessionEstablished(with: engineA), timeout: .milliseconds(500))
+
+        var outputB = engineB.outboundPackets.makeAsyncIterator()
+        await engineA.receivePacket(PacketTunnelPacket(data: packet, protocolFamily: AF_INET))
+
+        return await withTimeout(milliseconds: 200) {
+            await outputB.next()
+        }
     }
 
     private func ipv4Packet(source: [UInt8], destination: [UInt8]) -> Data {

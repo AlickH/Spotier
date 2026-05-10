@@ -193,6 +193,10 @@ final class MeshEngine {
                     sequence: inbound.frame.sequence,
                     ciphertext: packet.encryptedIPPacket
                 )
+                guard shouldAcceptDataFrame(inbound.frame) else {
+                    events.append(.logLine("Dropped disabled exit-node packet"))
+                    return
+                }
                 emitPacket(PacketTunnelPacket(data: plaintext, protocolFamily: protocolFamily(for: plaintext)))
             }
         } catch {
@@ -254,6 +258,13 @@ final class MeshEngine {
     private func syncPeerState() {
         guard let manager = peerManager else { return }
         peerStore = manager.peerStore
+    }
+
+    private func shouldAcceptDataFrame(_ frame: CoreFrame) -> Bool {
+        if (frame.flags & CoreFrame.exitNodeFlag) == 0 {
+            return true
+        }
+        return configuration?.enableExitNode == true
     }
 
     private func forward(_ packet: PacketTunnelPacket, decision: PacketRouteDecision) async throws {
