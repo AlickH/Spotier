@@ -5,11 +5,6 @@ import os
 let debounceInterval: TimeInterval = 0.5
 
 class PacketTunnelProvider: NEPacketTunnelProvider {
-    
-    // Hold a weak reference for C callback bridging
-    private static weak var current: PacketTunnelProvider?
-
-    
     private var lastAppliedSettings: SettingsSnapshot?
     private var needReapplySettings = false
     private var debounceTask: Task<Void, Never>?
@@ -36,51 +31,6 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         } catch {
             logger.error("读取配置文件失败: \(error.localizedDescription)")
             return nil
-        }
-    }
-    
-    // MARK: - Running Info Callback
-    
-    private func registerRunningInfoCallback() {
-        let callback: @convention(c) () -> Void = {
-            PacketTunnelProvider.current?.handleRunningInfoChanged()
-        }
-        do {
-            try EasyTierCore.registerRunningInfoCallback(callback)
-            logger.info("已注册 running info callback")
-        } catch {
-            logger.error("注册 running info callback 失败: \(error)")
-        }
-    }
-    
-    private func handleRunningInfoChanged() {
-        logger.info("Running info 已变化，触发网络设置更新")
-        enqueueSettingsUpdate()
-    }
-    
-    // MARK: - Stop Callback
-    
-    private func registerStopCallback() {
-        let callback: @convention(c) () -> Void = {
-            PacketTunnelProvider.current?.handleRustStop()
-        }
-        do {
-            try EasyTierCore.registerStopCallback(callback)
-            logger.info("已注册 stop callback")
-        } catch {
-            logger.error("注册 stop callback 失败: \(error)")
-        }
-    }
-    
-    private func handleRustStop() {
-        let msg = EasyTierCore.getLatestErrorMessage() ?? ""
-        logger.error("Rust Core 已停止: \(msg)")
-
-        Task { @MainActor in
-            self.cancelTunnelWithError(NSError(
-                domain: "SwiftierNE", code: 2,
-                userInfo: [NSLocalizedDescriptionKey: msg]
-            ))
         }
     }
     
@@ -243,7 +193,6 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     
     override func startTunnel(options: [String : NSObject]?, completionHandler: @escaping (Error?) -> Void) {
         logger.info("正在启动 VPN Tunnel...")
-        PacketTunnelProvider.current = self
         
         // 1. 读取配置
         guard let configToml = loadConfig() else {
@@ -286,7 +235,6 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         let engine = meshEngine
         meshEngine = nil
         packetTunnelIO = nil
-        PacketTunnelProvider.current = nil
 
         Task {
             await engine?.stop()

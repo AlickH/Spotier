@@ -384,14 +384,14 @@
 - Delete: `SpotierNE/SwiftierCore.swift`
 - Test: `SpotierTests/MainConnectionUseCaseTests.swift`
 
-- [ ] Remove any app-side knowledge of Rust symbols.
-- [ ] Keep App Group config writing.
-- [ ] Keep `NETunnelProviderManager` lifecycle.
-- [ ] Keep provider IPC through `sendProviderMessage`.
-- [ ] Remove `SwiftierCore.swift` from project target membership.
-- [ ] Delete `SpotierNE/SwiftierCore.swift`.
-- [ ] Run app lifecycle tests.
-- [ ] Commit.
+- [x] Remove any app-side knowledge of Rust symbols.
+- [x] Keep App Group config writing.
+- [x] Keep `NETunnelProviderManager` lifecycle.
+- [x] Keep provider IPC through `sendProviderMessage`.
+- [x] Remove `SwiftierCore.swift` from project target membership.
+- [x] Delete `SpotierNE/SwiftierCore.swift`.
+- [ ] Run app lifecycle tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Commit.
 
 ### Task 17: Remove Rust Build Inputs
 
