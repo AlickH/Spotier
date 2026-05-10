@@ -68,8 +68,10 @@ final class PeerManager {
         case .endpointCandidate(let endpoint):
             try receiveEndpointCandidate(endpoint, from: inbound.frame.sender, now: now)
             return []
-        case .relayRequest, .relayResponse, .routeUpdate:
+        case .relayRequest, .relayResponse:
             refreshPeer(inbound.frame.sender, now: now)
+            return []
+        case .routeUpdate:
             return []
         }
     }

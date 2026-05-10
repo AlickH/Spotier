@@ -71,6 +71,23 @@ final class PeerManagerTests: XCTestCase {
         XCTAssertNil(manager.peerStore.peer(id: remote.peerID))
     }
 
+    func testRouteUpdateDoesNotRefreshPeerLiveness() throws {
+        let network = NetworkSecret(networkName: "easytier", secret: "secret")
+        let manager = try peerManager(seedByte: 1, network: network)
+        let remote = try identity(seedByte: 2, network: network)
+        let endpoint = TransportEndpoint(host: "127.0.0.1", port: 11010)
+        let base = Date(timeIntervalSince1970: 100)
+
+        _ = try manager.receive(TransportInboundFrame(frame: helloFrame(from: remote), remoteEndpoint: endpoint), now: base)
+        let responses = try manager.receive(
+            TransportInboundFrame(frame: routeUpdateFrame(from: remote), remoteEndpoint: endpoint),
+            now: base.addingTimeInterval(3)
+        )
+
+        XCTAssertTrue(responses.isEmpty)
+        XCTAssertEqual(manager.peerStore.peer(id: remote.peerID)?.lastSeen, base)
+    }
+
     func testStalePeerRemoval() throws {
         let network = NetworkSecret(networkName: "easytier", secret: "secret")
         let manager = try peerManager(seedByte: 1, network: network, staleTimeout: 10)
@@ -132,6 +149,16 @@ final class PeerManagerTests: XCTestCase {
             receiver: PeerID(1),
             sequence: 2,
             payload: .control(.peerPing)
+        )
+    }
+
+    private func routeUpdateFrame(from identity: NodeIdentity) -> CoreFrame {
+        CoreFrame(
+            type: .control,
+            sender: identity.peerID,
+            receiver: PeerID(1),
+            sequence: 3,
+            payload: .control(.routeUpdate(Data([0])))
         )
     }
 
