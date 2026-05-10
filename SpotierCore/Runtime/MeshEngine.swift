@@ -165,6 +165,7 @@ final class MeshEngine {
     private func sendBootstrapHello(to peers: [String]) async throws {
         guard let transport, let peerManager else { return }
         for peer in peers {
+            guard URL(string: peer)?.scheme == "udp" else { continue }
             let endpoint = try TransportEndpoint(urlString: peer)
             try await transport.send(peerManager.makeHelloFrame(), to: endpoint)
         }

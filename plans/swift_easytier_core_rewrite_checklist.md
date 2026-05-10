@@ -495,6 +495,7 @@
 - [x] Respond to ICMP echo requests sent to the MagicDNS resolver address.
 - [x] Compute IPv4 UDP checksums for MagicDNS DNS responses.
 - [x] Preserve IPv4 header length/options when MagicDNS rewrites DNS and ICMP responses.
+- [x] Skip non-UDP bootstrap peers in the UDP-only Swift transport path instead of silently sending UDP to TCP URLs.
 - [x] Add a Swift Package entry point for `SpotierCore` covering iOS, tvOS, and macOS source-level builds.
 
 ## Explicitly Out Of Scope
