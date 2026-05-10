@@ -86,8 +86,7 @@ final class MeshEngine {
             return nil
         }
 
-        let json = #"{"dev_name":"","events":[],"routes":[],"peers":[],"peer_route_pairs":[],"running":\#(status == .running)}"#
-        return json.data(using: .utf8)
+        return runningInfoData()
     }
 
     func runningInfoData() -> Data? {

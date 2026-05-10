@@ -71,4 +71,25 @@ final class RunningInfoSnapshotTests: XCTestCase {
         XCTAssertEqual(json?["running"] as? Bool, true)
         XCTAssertNotNil(json?["my_node_info"])
     }
+
+    func testProviderRunningInfoCommandReturnsSwiftCoreSnapshot() async throws {
+        let engine = MeshEngine()
+        let config = MeshEngineConfiguration(
+            networkName: "easytier",
+            networkSecret: "secret",
+            virtualIPv4: "10.0.0.1/24"
+        )
+
+        try await engine.start(configuration: config)
+        defer {
+            Task { await engine.stop() }
+        }
+
+        let data = try XCTUnwrap(engine.sendProviderCommand("running_info"))
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+
+        XCTAssertEqual(json?["dev_name"] as? String, engine.localIdentity?.hostname)
+        XCTAssertNotNil(json?["my_node_info"])
+        XCTAssertEqual(json?["running"] as? Bool, true)
+    }
 }
