@@ -1,5 +1,11 @@
 import SwiftUI
 
+enum ConfigGeneratorFormText {
+    static let listenerPlaceholder = "如：udp://1.1.1.1:11010"
+    static let mappedListenerFooter = "手动指定监听器的公网地址，其他节点可以使用该地址连接到本节点。例如：udp://123.123.123.123:11223，可以指定多个。"
+    static let mappedListenerPlaceholder = "URI (e.g. udp://...)"
+}
+
 struct ConfigGeneratorAdvancedForm: View {
     @Binding var model: SpotierConfigModel
 
@@ -171,7 +177,7 @@ struct ConfigGeneratorAdvancedForm: View {
         SwiftUI.Section("监听地址") {
             ForEach($model.listeners) { $listener in
                 HStack {
-                    TextField("如：tcp://1.1.1.1:11010", text: $listener.value)
+                    TextField(ConfigGeneratorFormText.listenerPlaceholder, text: $listener.value)
                         .textFieldStyle(.plain)
                         .labelsHidden()
                         .textContentType(.none)
@@ -291,8 +297,8 @@ struct ConfigGeneratorAdvancedForm: View {
     }
 
     private var mappedListenersSection: some View {
-        SwiftUI.Section(header: Text(LocalizedStringKey("监听映射")), footer: Text(LocalizedStringKey("手动指定监听器的公网地址，其他节点可以使用该地址连接到本节点。例如：tcp://123.123.123.123:11223，可以指定多个。"))) {
-            editableStringListSection(list: $model.mappedListeners, placeholder: "URI (e.g. tcp://...)")
+        SwiftUI.Section(header: Text(LocalizedStringKey("监听映射")), footer: Text(ConfigGeneratorFormText.mappedListenerFooter)) {
+            editableStringListSection(list: $model.mappedListeners, placeholder: ConfigGeneratorFormText.mappedListenerPlaceholder)
         }
     }
 

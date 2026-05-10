@@ -51,4 +51,14 @@ final class ConfigGeneratorBehaviorTests: XCTestCase {
             ["5353"]
         )
     }
+
+    func testFormExamplesUseSwiftCoreSupportedUDPEndpoints() {
+        XCTAssertFalse(ConfigGeneratorFormText.listenerPlaceholder.contains("tcp://"))
+        XCTAssertFalse(ConfigGeneratorFormText.mappedListenerFooter.contains("tcp://"))
+        XCTAssertFalse(ConfigGeneratorFormText.mappedListenerPlaceholder.contains("tcp://"))
+
+        XCTAssertTrue(ConfigGeneratorFormText.listenerPlaceholder.contains("udp://"))
+        XCTAssertTrue(ConfigGeneratorFormText.mappedListenerFooter.contains("udp://"))
+        XCTAssertTrue(ConfigGeneratorFormText.mappedListenerPlaceholder.contains("udp://"))
+    }
 }

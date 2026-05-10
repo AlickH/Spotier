@@ -503,6 +503,7 @@
 - [x] Fail Swift core startup when configured listeners exist but none are UDP-backed Swift transports.
 - [x] Fail Swift core startup when configured peers exist but none use the UDP-backed Swift bootstrap path.
 - [x] Add a Swift Package entry point for `SpotierCore` covering iOS, tvOS, and macOS source-level builds.
+- [x] Align config generator listener examples with the UDP-only Swift transport path.
 
 ## Explicitly Out Of Scope
 
