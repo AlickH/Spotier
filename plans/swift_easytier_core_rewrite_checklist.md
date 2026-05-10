@@ -308,15 +308,16 @@
 - Create: `SpotierCore/Runtime/PacketTunnelIO.swift`
 - Test: `SpotierNETests/PacketTunnelIOTests.swift`
 
-- [ ] Add `PacketTunnelIO` wrapper around `NEPacketTunnelFlow`.
-- [ ] Start `MeshEngine` in `startTunnel(options:completionHandler:)`.
-- [ ] Feed packets from `packetFlow.readPackets` into `MeshEngine`.
-- [ ] Write packets emitted by `MeshEngine` back through `packetFlow.writePackets`.
-- [ ] Remove all TUN file descriptor discovery logic.
-- [ ] Remove calls to `EasyTierCore.setTunFd`.
-- [ ] Keep `setTunnelNetworkSettings` as the only network settings path.
-- [ ] Test `PacketTunnelIO` with a fake packet flow abstraction if the target cannot instantiate `NEPacketTunnelFlow`.
-- [ ] Commit.
+- [x] Add `PacketTunnelIO` wrapper around `NEPacketTunnelFlow`.
+- [x] Start `MeshEngine` in `startTunnel(options:completionHandler:)`.
+- [x] Feed packets from `packetFlow.readPackets` into `MeshEngine`.
+- [x] Write packets emitted by `MeshEngine` back through `packetFlow.writePackets`.
+- [x] Remove all TUN file descriptor discovery logic.
+- [x] Remove calls to `EasyTierCore.setTunFd`.
+- [x] Keep `setTunnelNetworkSettings` as the only network settings path.
+- [x] Test `PacketTunnelIO` with a fake packet flow abstraction if the target cannot instantiate `NEPacketTunnelFlow`.
+- [ ] Run packet tunnel IO tests. Blocked by existing `SpotierNE` Rust linker dependency: `ld: library 'easytier_ios' not found`.
+- [x] Commit.
 
 ### Task 13: Replace Running Info
 

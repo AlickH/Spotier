@@ -14,6 +14,10 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
     private var needReapplySettings = false
     private var debounceTask: Task<Void, Never>?
     private var configHints = CoreConfigHints()
+    private var meshEngine: MeshEngine?
+    private var packetTunnelIO: PacketTunnelIO?
+    private var packetReadTask: Task<Void, Never>?
+    private var packetWriteTask: Task<Void, Never>?
 
     private let magicDNSResolver = "100.100.100.101"
     
@@ -133,11 +137,10 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
             return
         }
         
-        let needSetTunFd = shouldUpdateTunFd(old: lastAppliedSettings, new: newSnapshot)
-        logger.info("应用网络设置, needTunFd=\(needSetTunFd)")
+        logger.info("应用网络设置")
         
         setTunnelNetworkSettings(settings) { [weak self] error in
-            guard let self else {
+            guard self != nil else {
                 wrappedCompletion(error)
                 return
             }
@@ -146,36 +149,7 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
                 wrappedCompletion(error)
                 return
             }
-            
-            // Pass TUN fd to Rust Core
-            if needSetTunFd {
-                // Prefer packetFlow fd (the correct NE-created utun)
-                let packetFlowFd = self.packetFlow.value(forKeyPath: "socket.fileDescriptor") as? Int32
-                let scanFd = self.findTunnelFileDescriptor()
-                let tunFd = packetFlowFd ?? scanFd
-                
-                logger.error("TUN fd 诊断: packetFlow=\(packetFlowFd.map { String($0) } ?? "nil", privacy: .public), scan=\(scanFd.map { String($0) } ?? "nil", privacy: .public), chosen=\(tunFd.map { String($0) } ?? "nil", privacy: .public)")
-                
-                if let fd = tunFd {
-                    do {
-                        try EasyTierCore.setTunFd(fd)
-                        logger.error("TUN fd 已设置: \(fd, privacy: .public)")
-                    } catch {
-                        logger.error("设置 TUN fd 失败: \(error, privacy: .public)")
-                        wrappedCompletion(error)
-                        return
-                    }
-                } else {
-                    logger.error("无法获取 TUN fd（packetFlow 和 scan 均失败）")
-                    wrappedCompletion(NSError(
-                        domain: "SwiftierNE",
-                        code: 4,
-                        userInfo: [NSLocalizedDescriptionKey: "无法获取 TUN 文件描述符"]
-                    ))
-                    return
-                }
-            }
-            
+
             logger.info("网络设置已应用")
             wrappedCompletion(nil)
         }
@@ -279,48 +253,45 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         }
         
         // 2. 解析配置中的 IPv4 和 MTU 信息
+        let parsedConfig: CoreConfigParseResult
         do {
-            configHints = try CoreConfigParser.parse(configToml).hints
+            parsedConfig = try CoreConfigParser.parse(configToml)
+            configHints = parsedConfig.hints
         } catch {
             logger.error("解析配置失败: \(error.localizedDescription)")
             completionHandler(error)
             return
         }
         
-        // 3. 初始化 Logger（从 App Group 读取用户设置的日志等级）
-        let savedLevel: LogLevel = {
-            if let defaults = appGroupDefaults(),
-               let raw = defaults.string(forKey: "logLevel"),
-               let level = LogLevel(rawValue: raw.lowercased()) {
-                return level
+        let engine = MeshEngine()
+        let packetIO = PacketTunnelIO(flow: packetFlow)
+        meshEngine = engine
+        packetTunnelIO = packetIO
+
+        Task {
+            do {
+                try await engine.start(configuration: parsedConfig.configuration)
+                startPacketIO(engine: engine, packetIO: packetIO)
+                applyNetworkSettings(completionHandler)
+            } catch {
+                logger.error("Swift MeshEngine 启动失败: \(error.localizedDescription)")
+                completionHandler(error)
             }
-            return .info
-        }()
-        initRustLogger(level: savedLevel)
-        
-        // 4. 启动 Core（macOS cfg 已 patch，不会自动创建 TUN，通过 set_tun_fd 传入）
-        do {
-            try EasyTierCore.runNetworkInstance(config: configToml)
-            logger.info("EasyTier Core 启动成功")
-        } catch {
-            logger.error("EasyTier Core 启动失败: \(error)")
-            completionHandler(error)
-            return
         }
-        
-        // 5. 注册回调
-        registerStopCallback()
-        registerRunningInfoCallback()
-        
-        // 6. 应用网络设置并传入 TUN fd
-        applyNetworkSettings(completionHandler)
     }
     
     override func stopTunnel(with reason: NEProviderStopReason, completionHandler: @escaping () -> Void) {
         logger.info("正在停止 VPN Tunnel, reason: \(reason.rawValue)")
-        EasyTierCore.stopNetworkInstance()
+        stopPacketIO()
+        let engine = meshEngine
+        meshEngine = nil
+        packetTunnelIO = nil
         PacketTunnelProvider.current = nil
-        completionHandler()
+
+        Task {
+            await engine?.stop()
+            completionHandler()
+        }
     }
     
     // MARK: - App IPC (handleAppMessage)
@@ -368,24 +339,28 @@ class PacketTunnelProvider: NEPacketTunnelProvider {
         }
     }
     
-    /// Find the utun file descriptor by scanning open FDs
-    /// Delegates to the shared implementation in TunnelHelper.swift
-    private func findTunnelFileDescriptor() -> Int32? {
-        logger.info("尝试通过 FD 扫描查找 TUN 接口")
-        return tunnelFileDescriptor()
-    }
-    
-    private func shouldUpdateTunFd(old: SettingsSnapshot?, new: SettingsSnapshot) -> Bool {
-        // 只要有 IP 地址就应该设置 TUN fd
-        guard new.hasIPAddresses else {
-            logger.info("shouldUpdateTunFd: new snapshot has no IP addresses")
-            return false
+    private func startPacketIO(engine: MeshEngine, packetIO: PacketTunnelIO) {
+        packetIO.startReading()
+
+        packetReadTask = Task {
+            for await packet in packetIO.packets {
+                await engine.receivePacket(packet)
+            }
         }
-        // 每次 setTunnelNetworkSettings 成功后都应该重新设置 TUN fd，
-        // 因为系统可能会重建 utun 接口，导致之前的 fd 失效。
-        // 只有当设置完全相同时（会被上层 skip），才不需要更新。
-        logger.info("shouldUpdateTunFd: hasIP=true, always update tun fd")
-        return true
+
+        packetWriteTask = Task {
+            for await packet in engine.outboundPackets {
+                packetIO.write(packet)
+            }
+        }
+    }
+
+    private func stopPacketIO() {
+        packetReadTask?.cancel()
+        packetWriteTask?.cancel()
+        packetReadTask = nil
+        packetWriteTask = nil
+        packetTunnelIO?.stop()
     }
 }
 

@@ -1,10 +1,19 @@
 import Foundation
 
 final class MeshEngine {
+    let outboundPackets: AsyncStream<PacketTunnelPacket>
+
     private(set) var status: MeshEngineStatus = .stopped
     private(set) var configuration: MeshEngineConfiguration?
     private(set) var events: [MeshEngineEvent] = []
     private var transport: (any Transport)?
+    private var outboundPacketContinuation: AsyncStream<PacketTunnelPacket>.Continuation?
+
+    init() {
+        let stream = AsyncStream<PacketTunnelPacket>.makeStream()
+        outboundPackets = stream.stream
+        outboundPacketContinuation = stream.continuation
+    }
 
     func start(configuration: MeshEngineConfiguration) async throws {
         try configuration.validate()
@@ -42,6 +51,18 @@ final class MeshEngine {
 
         let json = #"{"dev_name":"","events":[],"routes":[],"peers":[],"peer_route_pairs":[],"running":\#(status == .running)}"#
         return json.data(using: .utf8)
+    }
+
+    func receivePacket(_ packet: PacketTunnelPacket) async {
+        do {
+            _ = try PacketClassifier.parse(packet.data)
+        } catch {
+            events.append(.logLine("Dropped non-IP packet"))
+        }
+    }
+
+    func emitPacket(_ packet: PacketTunnelPacket) {
+        outboundPacketContinuation?.yield(packet)
     }
 
     private func configuredUDPPort(from listeners: [String]) throws -> UInt16? {

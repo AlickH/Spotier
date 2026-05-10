@@ -1,44 +1,5 @@
 import Foundation
-import NetworkExtension
 import os
-
-// MARK: - TUN File Descriptor Discovery
-
-func tunnelFileDescriptor() -> Int32? {
-    let CTLIOCGINFO_VALUE: UInt = 0xc0644e03
-    logger.info("tunnelFileDescriptor() scan existing descriptors")
-    var ctlInfo = ctl_info()
-    withUnsafeMutablePointer(to: &ctlInfo.ctl_name) {
-        $0.withMemoryRebound(to: CChar.self, capacity: MemoryLayout.size(ofValue: $0.pointee)) {
-            _ = strcpy($0, "com.apple.net.utun_control")
-        }
-    }
-    for fd: Int32 in 0...1024 {
-        var addr = sockaddr_ctl()
-        var ret: Int32 = -1
-        var len = socklen_t(MemoryLayout.size(ofValue: addr))
-        withUnsafeMutablePointer(to: &addr) {
-            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
-                ret = getpeername(fd, $0, &len)
-            }
-        }
-        if ret != 0 || addr.sc_family != AF_SYSTEM {
-            continue
-        }
-        if ctlInfo.ctl_id == 0 {
-            ret = ioctl(fd, CTLIOCGINFO_VALUE, &ctlInfo)
-            if ret != 0 {
-                continue
-            }
-        }
-        if addr.sc_id == ctlInfo.ctl_id {
-            let dupFd = dup(fd)
-            logger.info("tunnelFileDescriptor() found fd: \(fd, privacy: .public), dup to: \(dupFd, privacy: .public)")
-            return dupFd
-        }
-    }
-    return nil
-}
 
 func initRustLogger(level: LogLevel) {
     guard let containerURL = appGroupContainerURL() else {
@@ -47,6 +8,12 @@ func initRustLogger(level: LogLevel) {
     }
     let path = containerURL.appendingPathComponent(LOG_FILENAME).path
     logger.info("initRustLogger() write to: \(path, privacy: .public)")
+
+    do {
+        _ = try trimSharedLogFileIfNeeded()
+    } catch {
+        logger.error("initRustLogger() failed to trim old log file: \(error.localizedDescription, privacy: .public)")
+    }
     
     var errPtr: UnsafePointer<CChar>? = nil
     let ret = path.withCString { pathPtr in

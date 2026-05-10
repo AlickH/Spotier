@@ -50,17 +50,6 @@ struct EasyTierCore {
         stop_network_instance()
     }
     
-    // 设置 TUN 文件描述符
-    static func setTunFd(_ fd: Int32) throws {
-        var errPtr: UnsafePointer<CChar>? = nil
-        let ret = set_tun_fd(fd, &errPtr)
-        
-        if ret != 0 {
-            let msg = extractRustError(errPtr) ?? ""
-            throw EasyTierError.executionFailed(msg)
-        }
-    }
-    
     // 注册停止回调
     static func registerStopCallback(_ callback: @convention(c) () -> Void) throws {
         var errPtr: UnsafePointer<CChar>? = nil
