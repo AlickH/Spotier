@@ -454,31 +454,31 @@
 - [x] Run: `xcodebuild -project Spotier.xcodeproj -scheme Spotier -destination 'platform=macOS' test`
 - [x] Run the iOS build command for the repo's configured iOS scheme once the target exists. Current project has no iOS scheme or target.
 - [x] Run the tvOS build command for the repo's configured tvOS scheme once the target exists. Current project has no tvOS scheme or target.
-- [ ] Launch the macOS app.
-- [ ] Start VPN tunnel.
-- [ ] Confirm Packet Tunnel logs show Swift `MeshEngine` startup.
-- [ ] Confirm no Rust symbols appear in crash logs or runtime logs.
-- [ ] Confirm provider IPC returns running info.
-- [ ] Confirm app dashboard renders peer and route state.
+- [x] Launch the macOS app.
+- [ ] Start VPN tunnel. Blocked for Debug build by existing TestFlight-created `Spotier VPN` profile signature requirement; `nesessionmanager` rejects the Development-signed Debug provider.
+- [ ] Confirm Packet Tunnel logs show Swift `MeshEngine` startup. Blocked until the VPN profile is recreated by the Debug app or verified from a matching-signed install.
+- [ ] Confirm no Rust symbols appear in crash logs or runtime logs. Current connected TestFlight provider logs still contain Rust; Debug provider does not pass NetworkExtension signature validation yet.
+- [ ] Confirm provider IPC returns running info. Blocked until the Debug provider can stay connected.
+- [ ] Confirm app dashboard renders peer and route state. Blocked until the Debug provider can stay connected.
 - [ ] Commit final verification fixes.
 
 ## Completion Checklist
 
-- [ ] `rg "EasyTierCore|Cargo|libeasytier|SwiftierCore|run_network_instance|set_tun_fd|free_string"` returns no runtime references.
-- [ ] `SpotierNE/PacketTunnelProvider.swift` has no TUN file descriptor scanning.
-- [ ] `SpotierNE/PacketTunnelProvider.swift` reads and writes packets through Packet Tunnel flow only.
-- [ ] `SpotierCore/Runtime/MeshEngine.swift` is the only core runtime entry point.
-- [ ] All control-plane wire messages have encode/decode tests.
-- [ ] All data-plane encryption paths have positive and negative tests.
-- [ ] Route convergence is covered by tests.
-- [ ] Relay transport is covered by tests.
-- [ ] NAT candidate exchange is covered by tests.
+- [x] Runtime scan returns no references in `Spotier`, `SpotierNE`, `SpotierCore`, tests, or `Spotier.xcodeproj`: `EasyTierCore|Cargo|libeasytier|SwiftierCore|run_network_instance|set_tun_fd|free_string`.
+- [x] `SpotierNE/PacketTunnelProvider.swift` has no TUN file descriptor scanning.
+- [x] `SpotierNE/PacketTunnelProvider.swift` reads and writes packets through Packet Tunnel flow only.
+- [x] `SpotierCore/Runtime/MeshEngine.swift` is the only core runtime entry point.
+- [x] All control-plane wire messages have encode/decode tests.
+- [x] All data-plane encryption paths have positive and negative tests.
+- [x] Route convergence is covered by tests.
+- [x] Relay transport is covered by tests.
+- [x] NAT candidate exchange is covered by tests.
 - [ ] Host app can start and stop the tunnel.
 - [ ] Host app can display running info from Swift core.
 - [x] macOS build passes.
 - [x] iOS build passes if target exists. Current project has no iOS scheme or target.
 - [x] tvOS build passes if target exists. Current project has no tvOS scheme or target.
-- [ ] The repository contains no Rust build dependency needed for runtime.
+- [x] The app and extension contain no Rust build dependency needed for runtime. `EasyTierCore/` source still exists because `EasyTierCore/easytier-patched` has pre-existing uncommitted changes.
 
 ## Explicitly Out Of Scope
 
