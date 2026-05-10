@@ -37,17 +37,19 @@ struct MagicDNSResponder {
 
         let dnsOffset = headerLength + 8
         guard let query = DNSQuery(packet: packet, offset: dnsOffset),
-              query.type == 1,
-              query.classCode == 1,
-              let hostname = hostnameInZone(query.name) else {
+              query.classCode == 1 else {
             return nil
         }
 
         let dnsPayload: Data
-        if let address = records[hostname] {
+        if query.type == 1, let hostname = hostnameInZone(query.name), let address = records[hostname] {
             dnsPayload = dnsSuccessPayload(query: query, address: address)
-        } else {
+        } else if query.type == 1, hostnameInZone(query.name) != nil {
             dnsPayload = dnsNXDomainPayload(query: query)
+        } else if query.type == 6, isZoneName(query.name) {
+            dnsPayload = dnsSOAPayload(query: query)
+        } else {
+            return nil
         }
         var udpPayload = Data()
         udpPayload.appendUInt16(53)
@@ -68,6 +70,10 @@ struct MagicDNSResponder {
         let suffix = ".\(zone.lowercased())"
         guard lowercased.hasSuffix(suffix) else { return nil }
         return String(lowercased.dropLast(suffix.count))
+    }
+
+    private func isZoneName(_ name: String) -> Bool {
+        name.lowercased() == zone.lowercased()
     }
 
     private func dnsSuccessPayload(query: DNSQuery, address: String) -> Data {
@@ -97,6 +103,37 @@ struct MagicDNSResponder {
         data.appendUInt16(0)
         data.appendUInt16(0)
         data.append(query.question)
+        return data
+    }
+
+    private func dnsSOAPayload(query: DNSQuery) -> Data {
+        var data = Data()
+        data.appendUInt16(query.id)
+        data.appendUInt16(0x8180)
+        data.appendUInt16(1)
+        data.appendUInt16(1)
+        data.appendUInt16(0)
+        data.appendUInt16(0)
+        data.append(query.question)
+        data.appendUInt16(0xC00C)
+        data.appendUInt16(6)
+        data.appendUInt16(1)
+        data.appendUInt32(60)
+        let rdata = soaRData()
+        data.appendUInt16(UInt16(rdata.count))
+        data.append(rdata)
+        return data
+    }
+
+    private func soaRData() -> Data {
+        var data = Data()
+        data.appendDNSName("ns.\(zone)")
+        data.appendDNSName("hostmaster.\(zone)")
+        data.appendUInt32(2023101001)
+        data.appendUInt32(7200)
+        data.appendUInt32(3600)
+        data.appendUInt32(1209600)
+        data.appendUInt32(86400)
         return data
     }
 
@@ -186,6 +223,15 @@ private extension Data {
         append(UInt8((value >> 16) & 0xFF))
         append(UInt8((value >> 8) & 0xFF))
         append(UInt8(value & 0xFF))
+    }
+
+    mutating func appendDNSName(_ name: String) {
+        for label in name.split(separator: ".") {
+            let bytes = Array(label.utf8)
+            append(UInt8(bytes.count))
+            append(contentsOf: bytes)
+        }
+        append(0)
     }
 
     func readUInt16(at offset: Int) -> UInt16 {

@@ -60,8 +60,24 @@ final class MagicDNSResponderTests: XCTestCase {
         XCTAssertEqual(response.readUInt16(at: 34), 0)
     }
 
-    private func dnsQueryPacket(name: String, sourcePort: UInt16) -> Data {
-        let dnsPayload = dnsQueryPayload(name: name)
+    func testRespondsWithSOAForConfiguredZone() throws {
+        let responder = MagicDNSResponder(
+            resolverIPv4: "100.100.100.101",
+            zone: "et.net",
+            records: ["peer": "10.0.0.2"]
+        )
+
+        let response = try XCTUnwrap(responder.response(to: dnsQueryPacket(name: "et.net", sourcePort: 53001, queryType: 6)))
+
+        XCTAssertEqual(response.readUInt16(at: 30), 0x8180)
+        XCTAssertEqual(response.readUInt16(at: 32), 1)
+        XCTAssertEqual(response.readUInt16(at: 34), 1)
+        XCTAssertEqual(response.readUInt16(at: 48), 6)
+        XCTAssertEqual(response.readUInt16(at: 50), 1)
+    }
+
+    private func dnsQueryPacket(name: String, sourcePort: UInt16, queryType: UInt16 = 1) -> Data {
+        let dnsPayload = dnsQueryPayload(name: name, queryType: queryType)
         var udp = Data()
         udp.appendUInt16(sourcePort)
         udp.appendUInt16(53)
@@ -76,7 +92,7 @@ final class MagicDNSResponderTests: XCTestCase {
         )
     }
 
-    private func dnsQueryPayload(name: String) -> Data {
+    private func dnsQueryPayload(name: String, queryType: UInt16) -> Data {
         var data = Data([0x12, 0x34, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
         for label in name.split(separator: ".") {
             let bytes = Array(label.utf8)
@@ -84,7 +100,7 @@ final class MagicDNSResponderTests: XCTestCase {
             data.append(contentsOf: bytes)
         }
         data.append(0)
-        data.appendUInt16(1)
+        data.appendUInt16(queryType)
         data.appendUInt16(1)
         return data
     }
