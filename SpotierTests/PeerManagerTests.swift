@@ -57,6 +57,20 @@ final class PeerManagerTests: XCTestCase {
         XCTAssertEqual(manager.peerStore.peer(id: remote.peerID)?.lastSeen, base.addingTimeInterval(3))
     }
 
+    func testPeerPingFromUnknownPeerIsIgnored() throws {
+        let network = NetworkSecret(networkName: "easytier", secret: "secret")
+        let manager = try peerManager(seedByte: 1, network: network)
+        let remote = try identity(seedByte: 2, network: network)
+        let endpoint = TransportEndpoint(host: "127.0.0.1", port: 11010)
+
+        let responses = try manager.receive(
+            TransportInboundFrame(frame: pingFrame(from: remote), remoteEndpoint: endpoint)
+        )
+
+        XCTAssertTrue(responses.isEmpty)
+        XCTAssertNil(manager.peerStore.peer(id: remote.peerID))
+    }
+
     func testStalePeerRemoval() throws {
         let network = NetworkSecret(networkName: "easytier", secret: "secret")
         let manager = try peerManager(seedByte: 1, network: network, staleTimeout: 10)

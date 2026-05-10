@@ -59,6 +59,7 @@ final class PeerManager {
             try receiveSessionAnswer(publicKey, from: inbound.frame.sender, now: now)
             return []
         case .peerPing:
+            guard peerStore.peer(id: inbound.frame.sender) != nil else { return [] }
             refreshPeer(inbound.frame.sender, now: now)
             return [makeControlFrame(receiver: inbound.frame.sender, payload: .peerPong)]
         case .peerPong:
