@@ -40,6 +40,8 @@ final class CoreConfigParserTests: XCTestCase {
         XCTAssertEqual(result.configuration.advertisedRoutes, ["192.168.50.0/24", "10.88.0.0/16"])
         XCTAssertEqual(result.configuration.exitNodes, ["10.126.126.9", "fd00::9"])
         XCTAssertTrue(result.configuration.enableExitNode)
+        XCTAssertTrue(result.configuration.magicDNS)
+        XCTAssertEqual(result.configuration.magicDNSZone, "et.net")
         XCTAssertEqual(result.hints.ipv4, "10.126.126.4")
         XCTAssertEqual(result.hints.subnet, "255.255.255.0")
         XCTAssertTrue(result.hints.magicDNS)
@@ -125,6 +127,8 @@ final class CoreConfigParserTests: XCTestCase {
 
         XCTAssertTrue(result.hints.magicDNS)
         XCTAssertEqual(result.hints.magicDNSZone, "spotier.test")
+        XCTAssertTrue(result.configuration.magicDNS)
+        XCTAssertEqual(result.configuration.magicDNSZone, "spotier.test")
     }
 
     func testRejectsMissingNetworkName() {

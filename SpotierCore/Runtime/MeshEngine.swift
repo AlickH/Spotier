@@ -112,6 +112,10 @@ final class MeshEngine {
 
     func receivePacket(_ packet: PacketTunnelPacket) async {
         do {
+            if let response = magicDNSResponse(to: packet.data) {
+                emitPacket(PacketTunnelPacket(data: response, protocolFamily: AF_INET))
+                return
+            }
             let parsedPacket = try PacketClassifier.parse(packet.data)
             let decision = PacketRouter(
                 routeTable: routeTable,
@@ -123,6 +127,16 @@ final class MeshEngine {
         } catch {
             events.append(.logLine("Dropped non-IP packet"))
         }
+    }
+
+    private func magicDNSResponse(to packet: Data) -> Data? {
+        guard configuration?.magicDNS == true else { return nil }
+        let responder = MagicDNSResponder(
+            resolverIPv4: "100.100.100.101",
+            zone: configuration?.magicDNSZone ?? "et.net",
+            records: MagicDNSResponder.records(localIdentity: localIdentity, peerStore: peerStore)
+        )
+        return responder.response(to: packet)
     }
 
     func emitPacket(_ packet: PacketTunnelPacket) {

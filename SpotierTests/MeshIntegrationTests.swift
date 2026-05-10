@@ -98,6 +98,36 @@ final class MeshIntegrationTests: XCTestCase {
         XCTAssertEqual(engine.localIdentity?.hostname, "office-node")
     }
 
+    func testMagicDNSQueryEmitsLocalDNSResponse() async throws {
+        let engine = MeshEngine(deviceSeed: Data(repeating: 1, count: 32))
+        try await engine.start(configuration: MeshEngineConfiguration(
+            networkName: "easytier",
+            networkSecret: "secret",
+            instanceName: "local",
+            virtualIPv4: "10.0.0.1/24",
+            magicDNS: true,
+            magicDNSZone: "et.net"
+        ))
+        defer {
+            Task { await engine.stop() }
+        }
+        var output = engine.outboundPackets.makeAsyncIterator()
+
+        await engine.receivePacket(PacketTunnelPacket(
+            data: dnsQueryPacket(name: "local.et.net", sourcePort: 53001),
+            protocolFamily: AF_INET
+        ))
+
+        let response = await withTimeout(milliseconds: 500) {
+            await output.next()
+        }
+        let data = try XCTUnwrap(response?.data)
+        XCTAssertEqual(response?.protocolFamily, AF_INET)
+        XCTAssertEqual(data[12..<16].map(Int.init), [100, 100, 100, 101])
+        XCTAssertEqual(data[16..<20].map(Int.init), [10, 0, 0, 9])
+        XCTAssertEqual(data.suffix(4).map(Int.init), [10, 0, 0, 1])
+    }
+
     func testOneWayConfiguredPeerEstablishesRouteAndTransfersPacket() async throws {
         let transportA = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19120))
         let transportB = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19121))
@@ -524,6 +554,38 @@ final class MeshIntegrationTests: XCTestCase {
         return data
     }
 
+    private func dnsQueryPacket(name: String, sourcePort: UInt16) -> Data {
+        var dnsPayload = Data([0x12, 0x34, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00])
+        for label in name.split(separator: ".") {
+            let bytes = Array(label.utf8)
+            dnsPayload.append(UInt8(bytes.count))
+            dnsPayload.append(contentsOf: bytes)
+        }
+        dnsPayload.append(0)
+        dnsPayload.appendUInt16(1)
+        dnsPayload.appendUInt16(1)
+
+        var udp = Data()
+        udp.appendUInt16(sourcePort)
+        udp.appendUInt16(53)
+        udp.appendUInt16(UInt16(8 + dnsPayload.count))
+        udp.appendUInt16(0)
+        udp.append(dnsPayload)
+
+        let totalLength = UInt16(20 + udp.count)
+        var data = Data([
+            0x45, 0x00,
+            UInt8(totalLength >> 8), UInt8(totalLength & 0xFF),
+            0x00, 0x00, 0x00, 0x00,
+            64, 17,
+            0x00, 0x00
+        ])
+        data.append(contentsOf: [10, 0, 0, 9])
+        data.append(contentsOf: [100, 100, 100, 101])
+        data.append(udp)
+        return data
+    }
+
     private func ipv6Packet(source: [UInt16], destination: [UInt16]) -> Data {
         var data = Data([0x60, 0x00, 0x00, 0x00, 0x00, 0x00, 58, 64])
         appendIPv6(source, to: &data)
@@ -543,6 +605,13 @@ private extension MeshEngine {
     func sessionEstablished(with remote: MeshEngine) -> Bool {
         guard let peerID = remote.localIdentity?.peerID else { return false }
         return hasEstablishedSession(with: peerID)
+    }
+}
+
+private extension Data {
+    mutating func appendUInt16(_ value: UInt16) {
+        append(UInt8(value >> 8))
+        append(UInt8(value & 0xFF))
     }
 }
 

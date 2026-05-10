@@ -15,6 +15,8 @@ struct MeshEngineConfiguration: Equatable {
     var mtu: Int
     var disableP2P: Bool
     var disableUDPHolePunching: Bool
+    var magicDNS: Bool
+    var magicDNSZone: String
 
     init(
         networkName: String,
@@ -30,7 +32,9 @@ struct MeshEngineConfiguration: Equatable {
         enableExitNode: Bool = false,
         mtu: Int = 1380,
         disableP2P: Bool = false,
-        disableUDPHolePunching: Bool = false
+        disableUDPHolePunching: Bool = false,
+        magicDNS: Bool = false,
+        magicDNSZone: String = "et.net"
     ) {
         self.networkName = networkName
         self.networkSecret = networkSecret
@@ -46,6 +50,8 @@ struct MeshEngineConfiguration: Equatable {
         self.mtu = mtu
         self.disableP2P = disableP2P
         self.disableUDPHolePunching = disableUDPHolePunching
+        self.magicDNS = magicDNS
+        self.magicDNSZone = magicDNSZone
     }
 
     func validate() throws {

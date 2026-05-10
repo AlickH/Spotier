@@ -99,7 +99,9 @@ enum CoreConfigParser {
             enableExitNode: enableExitNode,
             mtu: mtu,
             disableP2P: disableP2P,
-            disableUDPHolePunching: disableUDPHolePunching
+            disableUDPHolePunching: disableUDPHolePunching,
+            magicDNS: hints.magicDNS,
+            magicDNSZone: hints.magicDNSZone
         )
 
         try configuration.validate()
