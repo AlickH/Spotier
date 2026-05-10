@@ -133,6 +133,8 @@ enum PeerMode: String, CaseIterable, Identifiable {
     case manual = "手动"
     case standalone = "独立"
 
+    static let allCases: [PeerMode] = [.manual, .standalone]
+
     var id: String { rawValue }
 
     var localizedTitle: LocalizedStringKey {

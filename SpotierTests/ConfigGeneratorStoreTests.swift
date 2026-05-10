@@ -92,6 +92,10 @@ final class ConfigGeneratorStoreTests: XCTestCase {
         XCTAssertEqual(result.model.manualPeers.values, ["udp://"])
     }
 
+    func testVisiblePeerModesOnlyIncludeSwiftCoreSupportedModes() {
+        XCTAssertEqual(PeerMode.allCases, [.manual, .standalone])
+    }
+
     func testSaveDraftAndClearDraftDelegateToDraftStore() {
         let editingURL = URL(fileURLWithPath: "/tmp/example.toml")
         var draft = SpotierConfigModel()
