@@ -296,6 +296,42 @@ final class MeshIntegrationTests: XCTestCase {
         XCTAssertNil(engineA.routeTable.bestRoute(for: "192.168.88.9"))
     }
 
+    func testRouteUpdateAddressedToAnotherPeerIsIgnored() async throws {
+        let transportA = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19134))
+        let transportB = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19135))
+        transportA.connect(to: transportB)
+        let engineA = MeshEngine(transport: transportA, deviceSeed: Data(repeating: 1, count: 32))
+        let engineB = MeshEngine(transport: transportB, deviceSeed: Data(repeating: 2, count: 32))
+        defer {
+            Task {
+                await engineA.stop()
+                await engineB.stop()
+            }
+        }
+
+        try await engineA.start(configuration: configuration(ipv4: "10.0.0.1/24", ipv6: "fd00:0:0:0:0:0:0:1"))
+        try await engineB.start(configuration: configuration(ipv4: "10.0.0.2/24", ipv6: "fd00:0:0:0:0:0:0:2"))
+        try await exchangeHello(from: engineB, transport: transportB, to: engineA, endpoint: transportA.endpoint)
+        try await waitUntil(engineA.sessionEstablished(with: engineB), timeout: .milliseconds(500))
+        let updatePayload = routeUpdatePayload(
+            ipv4Address: "10.0.0.2",
+            ipv6Address: nil,
+            cost: 1,
+            proxyCIDRs: ["192.168.99.0/24"]
+        )
+        try await transportB.send(CoreFrame(
+            type: .control,
+            sender: try XCTUnwrap(engineB.localIdentity?.peerID),
+            receiver: PeerID(999),
+            sequence: 52,
+            payload: .control(.routeUpdate(updatePayload))
+        ), to: transportA.endpoint)
+
+        try? await Task.sleep(for: .milliseconds(100))
+
+        XCTAssertNil(engineA.routeTable.bestRoute(for: "192.168.99.9"))
+    }
+
     func testStopClearsMeshStateFromRunningInfo() async throws {
         let transportA = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19140))
         let transportB = InMemoryTransport(endpoint: TransportEndpoint(host: "127.0.0.1", port: 19141))
