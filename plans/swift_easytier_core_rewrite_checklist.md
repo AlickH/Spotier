@@ -489,6 +489,7 @@
 - [x] Sort running-info route rows by IPv4 address for deterministic Rust-compatible output.
 - [x] Skip invalid MagicDNS hostnames while preserving Unicode hostname records.
 - [x] Drop IPv6 packets from foreign link-local sources unless the source is the configured local IPv6 address.
+- [x] Forward IPv4 broadcast/multicast and IPv6 multicast packets to all known peers using the encrypted data path.
 
 ## Explicitly Out Of Scope
 

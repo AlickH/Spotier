@@ -93,6 +93,50 @@ final class MeshIntegrationTests: XCTestCase {
         XCTAssertEqual(statsB["tx_bytes"] as? Int, 0)
     }
 
+    func testIPv4BroadcastPacketIsForwardedToEveryEstablishedPeerExceptLocalPeer() async throws {
+        let transportA = InMemoryTransport(endpoint: TransportEndpoint(host: "node-a", port: 10007))
+        let transportB = InMemoryTransport(endpoint: TransportEndpoint(host: "node-b", port: 10008))
+        let transportC = InMemoryTransport(endpoint: TransportEndpoint(host: "node-c", port: 10009))
+        transportA.connect(to: transportB)
+        transportA.connect(to: transportC)
+
+        let engineA = MeshEngine(transport: transportA, deviceSeed: Data(repeating: 1, count: 32))
+        let engineB = MeshEngine(transport: transportB, deviceSeed: Data(repeating: 2, count: 32))
+        let engineC = MeshEngine(transport: transportC, deviceSeed: Data(repeating: 3, count: 32))
+        defer {
+            Task {
+                await engineA.stop()
+                await engineB.stop()
+                await engineC.stop()
+            }
+        }
+
+        try await engineA.start(configuration: configuration(ipv4: "10.0.0.1/24", ipv6: "fd00:0:0:0:0:0:0:1"))
+        try await engineB.start(configuration: configuration(ipv4: "10.0.0.2/24", ipv6: "fd00:0:0:0:0:0:0:2"))
+        try await engineC.start(configuration: configuration(ipv4: "10.0.0.3/24", ipv6: "fd00:0:0:0:0:0:0:3"))
+        try await exchangeHello(from: engineA, transport: transportA, to: engineB, endpoint: transportB.endpoint)
+        try await exchangeHello(from: engineB, transport: transportB, to: engineA, endpoint: transportA.endpoint)
+        try await exchangeHello(from: engineA, transport: transportA, to: engineC, endpoint: transportC.endpoint)
+        try await exchangeHello(from: engineC, transport: transportC, to: engineA, endpoint: transportA.endpoint)
+        try await waitUntil(engineA.sessionEstablished(with: engineB), timeout: .milliseconds(500))
+        try await waitUntil(engineA.sessionEstablished(with: engineC), timeout: .milliseconds(500))
+
+        let broadcast = ipv4Packet(source: [10, 0, 0, 1], destination: [10, 0, 0, 255])
+        var outputB = engineB.outboundPackets.makeAsyncIterator()
+        var outputC = engineC.outboundPackets.makeAsyncIterator()
+
+        await engineA.receivePacket(PacketTunnelPacket(data: broadcast, protocolFamily: AF_INET))
+
+        let receivedB = await withTimeout(milliseconds: 500) {
+            await outputB.next()
+        }
+        let receivedC = await withTimeout(milliseconds: 500) {
+            await outputC.next()
+        }
+        XCTAssertEqual(receivedB, PacketTunnelPacket(data: broadcast, protocolFamily: AF_INET))
+        XCTAssertEqual(receivedC, PacketTunnelPacket(data: broadcast, protocolFamily: AF_INET))
+    }
+
     func testRunningInfoUpdatesLatencyFromPeerPingPong() async throws {
         let transportA = InMemoryTransport(endpoint: TransportEndpoint(host: "node-a", port: 10005))
         let transportB = InMemoryTransport(endpoint: TransportEndpoint(host: "node-b", port: 10006))

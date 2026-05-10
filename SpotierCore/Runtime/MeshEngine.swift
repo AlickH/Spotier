@@ -124,6 +124,7 @@ final class MeshEngine {
             let parsedPacket = try PacketClassifier.parse(packet.data)
             let decision = PacketRouter(
                 routeTable: routeTable,
+                localPeerID: localIdentity?.peerID,
                 localIPv4: localIdentity?.virtualIPv4,
                 localIPv6: localIdentity?.virtualIPv6,
                 exitNodes: configuration?.exitNodes ?? [],
@@ -317,6 +318,11 @@ final class MeshEngine {
         case .local:
             emitPacket(packet)
             return
+        case .peers(let ids):
+            for id in ids {
+                try await forward(packet, to: id, frameFlags: 0)
+            }
+            return
         case .peer(let id), .subnetProxy(let id):
             peerID = id
             frameFlags = 0
@@ -328,6 +334,10 @@ final class MeshEngine {
             return
         }
 
+        try await forward(packet, to: peerID, frameFlags: frameFlags)
+    }
+
+    private func forward(_ packet: PacketTunnelPacket, to peerID: PeerID, frameFlags: UInt16) async throws {
         guard let localIdentity,
               let session = peerManager?.session(for: peerID),
               let crypto = session.crypto,

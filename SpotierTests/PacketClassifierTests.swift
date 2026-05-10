@@ -257,6 +257,134 @@ final class PacketClassifierTests: XCTestCase {
         XCTAssertEqual(router.route(localLinkLocalPacket), .peer(PeerID(2)))
     }
 
+    func testIPv4BroadcastAndMulticastForwardToAllKnownPeersExceptLocalPeer() throws {
+        let broadcast = try PacketClassifier.parse(ipv4Packet(
+            source: [10, 126, 126, 4],
+            destination: [10, 126, 126, 255],
+            protocolNumber: 17,
+            payload: []
+        ))
+        let multicast = try PacketClassifier.parse(ipv4Packet(
+            source: [10, 126, 126, 4],
+            destination: [224, 0, 0, 251],
+            protocolNumber: 17,
+            payload: []
+        ))
+        var table = RouteTable()
+        table.apply(RouteUpdate(
+            peerID: PeerID(1),
+            ipv4Address: "10.126.126.4",
+            ipv6Address: nil,
+            nextHopPeerID: PeerID(1),
+            cost: 1,
+            proxyCIDRs: []
+        ))
+        table.apply(RouteUpdate(
+            peerID: PeerID(2),
+            ipv4Address: "10.126.126.2",
+            ipv6Address: nil,
+            nextHopPeerID: PeerID(2),
+            cost: 1,
+            proxyCIDRs: []
+        ))
+        table.apply(RouteUpdate(
+            peerID: PeerID(3),
+            ipv4Address: "10.126.126.3",
+            ipv6Address: nil,
+            nextHopPeerID: PeerID(3),
+            cost: 1,
+            proxyCIDRs: []
+        ))
+
+        let router = PacketRouter(
+            routeTable: table,
+            localPeerID: PeerID(1),
+            localIPv4: "10.126.126.4/24"
+        )
+
+        XCTAssertEqual(router.route(broadcast), .peers([PeerID(2), PeerID(3)]))
+        XCTAssertEqual(router.route(multicast), .peers([PeerID(2), PeerID(3)]))
+    }
+
+    func testIPv6MulticastForwardsToAllKnownPeers() throws {
+        let multicast = try PacketClassifier.parse(ipv6Packet(
+            source: [0xfd00, 0, 0, 0, 0, 0, 0, 1],
+            destination: [0xff02, 0, 0, 0, 0, 0, 0, 1],
+            nextHeader: 17,
+            payload: []
+        ))
+        var table = RouteTable()
+        table.apply(RouteUpdate(
+            peerID: PeerID(2),
+            ipv4Address: nil,
+            ipv6Address: "fd00:0:0:0:0:0:0:2",
+            nextHopPeerID: PeerID(2),
+            cost: 1,
+            proxyCIDRs: []
+        ))
+        table.apply(RouteUpdate(
+            peerID: PeerID(3),
+            ipv4Address: nil,
+            ipv6Address: "fd00:0:0:0:0:0:0:3",
+            nextHopPeerID: PeerID(3),
+            cost: 1,
+            proxyCIDRs: []
+        ))
+
+        let router = PacketRouter(routeTable: table, localIPv6: "fd00:0:0:0:0:0:0:1/64")
+
+        XCTAssertEqual(router.route(multicast), .peers([PeerID(2), PeerID(3)]))
+    }
+
+    func testIPv6LastAddressOnlyForwardsWhenItBelongsToLocalNetwork() throws {
+        let foreignNetworkLastAddress = try PacketClassifier.parse(ipv6Packet(
+            source: [0xfd00, 0, 0, 0, 0, 0, 0, 1],
+            destination: [0xfd01, 0, 0, 0, 0xffff, 0xffff, 0xffff, 0xffff],
+            nextHeader: 17,
+            payload: []
+        ))
+        var table = RouteTable()
+        table.apply(RouteUpdate(
+            peerID: PeerID(2),
+            ipv4Address: nil,
+            ipv6Address: "fd00:0:0:0:0:0:0:2",
+            nextHopPeerID: PeerID(2),
+            cost: 1,
+            proxyCIDRs: []
+        ))
+
+        let router = PacketRouter(routeTable: table, localIPv6: "fd00:0:0:0:0:0:0:1/64")
+
+        XCTAssertEqual(router.route(foreignNetworkLastAddress), .drop)
+    }
+
+    func testIPv4MulticastDoesNotUseExitNodeWhenThereAreNoRemotePeers() throws {
+        let ipv4Multicast = try PacketClassifier.parse(ipv4Packet(
+            source: [10, 126, 126, 4],
+            destination: [224, 0, 0, 251],
+            protocolNumber: 17,
+            payload: []
+        ))
+        var table = RouteTable()
+        table.apply(RouteUpdate(
+            peerID: PeerID(9),
+            ipv4Address: "10.126.126.9",
+            ipv6Address: nil,
+            nextHopPeerID: PeerID(9),
+            cost: 1,
+            proxyCIDRs: []
+        ))
+
+        let router = PacketRouter(
+            routeTable: table,
+            localPeerID: PeerID(9),
+            localIPv4: "10.126.126.4/24",
+            exitNodes: ["10.126.126.9"]
+        )
+
+        XCTAssertEqual(router.route(ipv4Multicast), .drop)
+    }
+
     func testRejectsNonIPPacket() {
         XCTAssertThrowsError(try PacketClassifier.parse(Data([0x10, 0x00]))) { error in
             XCTAssertEqual(error as? IPPacketError, .nonIPPacket)
