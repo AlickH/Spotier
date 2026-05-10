@@ -87,6 +87,7 @@ enum CoreConfigParser {
         let enableExitNode = boolValue(flags["enable_exit_node"] ?? topLevel["enable_exit_node"])
         let disableIPv6 = boolValue(flags["disable_ipv6"] ?? topLevel["disable_ipv6"])
         let disableP2P = boolValue(flags["disable_p2p"] ?? topLevel["disable_p2p"])
+        let p2pOnly = boolValue(flags["p2p_only"] ?? topLevel["p2p_only"])
         let disableUDPHolePunching = boolValue(flags["disable_udp_hole_punching"] ?? topLevel["disable_udp_hole_punching"])
         let hints = configHints(topLevel: topLevel, flags: flags, mtu: mtu, disableIPv6: disableIPv6)
 
@@ -104,6 +105,7 @@ enum CoreConfigParser {
             enableExitNode: enableExitNode,
             mtu: mtu,
             disableP2P: disableP2P,
+            p2pOnly: p2pOnly,
             disableUDPHolePunching: disableUDPHolePunching,
             magicDNS: hints.magicDNS,
             magicDNSZone: hints.magicDNSZone

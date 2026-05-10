@@ -118,6 +118,34 @@ final class PacketClassifierTests: XCTestCase {
         XCTAssertEqual(router.route(packet), .exitNode(PeerID(2)))
     }
 
+    func testP2POnlyDropsExternalIPv4InsteadOfUsingExitNode() throws {
+        let packet = try PacketClassifier.parse(ipv4Packet(
+            source: [10, 126, 126, 4],
+            destination: [203, 0, 113, 10],
+            protocolNumber: 6,
+            payload: []
+        ))
+        var table = RouteTable()
+        table.apply(RouteUpdate(
+            peerID: PeerID(2),
+            ipv4Address: "10.126.126.10",
+            ipv6Address: nil,
+            nextHopPeerID: PeerID(2),
+            cost: 1,
+            proxyCIDRs: []
+        ))
+
+        let router = PacketRouter(
+            routeTable: table,
+            localIPv4: "10.126.126.4/24",
+            localIPv6: nil,
+            exitNodes: ["10.126.126.10"],
+            p2pOnly: true
+        )
+
+        XCTAssertEqual(router.route(packet), .drop)
+    }
+
     func testSameVirtualIPv4NetworkUnknownPeerDoesNotUseExitNode() throws {
         let packet = try PacketClassifier.parse(ipv4Packet(
             source: [10, 126, 126, 4],

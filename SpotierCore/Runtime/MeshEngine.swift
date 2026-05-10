@@ -121,7 +121,8 @@ final class MeshEngine {
                 routeTable: routeTable,
                 localIPv4: localIdentity?.virtualIPv4,
                 localIPv6: localIdentity?.virtualIPv6,
-                exitNodes: configuration?.exitNodes ?? []
+                exitNodes: configuration?.exitNodes ?? [],
+                p2pOnly: configuration?.p2pOnly == true
             ).route(parsedPacket)
             try await forward(packet, decision: decision)
         } catch {

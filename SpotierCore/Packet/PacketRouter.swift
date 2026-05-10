@@ -13,17 +13,20 @@ struct PacketRouter {
     var localIPv4: String?
     var localIPv6: String?
     var exitNodes: [String]
+    var p2pOnly: Bool
 
     init(
         routeTable: RouteTable,
         localIPv4: String? = nil,
         localIPv6: String? = nil,
-        exitNodes: [String] = []
+        exitNodes: [String] = [],
+        p2pOnly: Bool = false
     ) {
         self.routeTable = routeTable
         self.localIPv4 = localIPv4
         self.localIPv6 = localIPv6
         self.exitNodes = exitNodes
+        self.p2pOnly = p2pOnly
     }
 
     func route(_ packet: IPPacket) -> PacketRouteDecision {
@@ -35,6 +38,9 @@ struct PacketRouter {
 
         guard let route = routeTable.bestRoute(for: destination) else {
             if isSameIPv4Network(destination, localCIDR: localIPv4) {
+                return .drop
+            }
+            if p2pOnly {
                 return .drop
             }
             return exitNodeRoute() ?? .drop

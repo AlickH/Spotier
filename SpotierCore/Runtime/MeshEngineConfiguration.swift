@@ -14,6 +14,7 @@ struct MeshEngineConfiguration: Equatable {
     var enableExitNode: Bool
     var mtu: Int
     var disableP2P: Bool
+    var p2pOnly: Bool
     var disableUDPHolePunching: Bool
     var magicDNS: Bool
     var magicDNSZone: String
@@ -32,6 +33,7 @@ struct MeshEngineConfiguration: Equatable {
         enableExitNode: Bool = false,
         mtu: Int = 1380,
         disableP2P: Bool = false,
+        p2pOnly: Bool = false,
         disableUDPHolePunching: Bool = false,
         magicDNS: Bool = false,
         magicDNSZone: String = "et.net"
@@ -49,6 +51,7 @@ struct MeshEngineConfiguration: Equatable {
         self.enableExitNode = enableExitNode
         self.mtu = mtu
         self.disableP2P = disableP2P
+        self.p2pOnly = p2pOnly
         self.disableUDPHolePunching = disableUDPHolePunching
         self.magicDNS = magicDNS
         self.magicDNSZone = magicDNSZone

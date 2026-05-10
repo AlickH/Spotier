@@ -86,10 +86,12 @@ final class CoreConfigParserTests: XCTestCase {
 
         [flags]
         disable_p2p = true
+        p2p_only = true
         disable_udp_hole_punching = true
         """)
 
         XCTAssertTrue(result.configuration.disableP2P)
+        XCTAssertTrue(result.configuration.p2pOnly)
         XCTAssertTrue(result.configuration.disableUDPHolePunching)
     }
 
