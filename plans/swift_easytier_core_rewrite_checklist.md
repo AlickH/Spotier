@@ -452,8 +452,8 @@
 
 - [x] Run: `xcodebuild -project Spotier.xcodeproj -scheme Spotier -destination 'platform=macOS' build`
 - [x] Run: `xcodebuild -project Spotier.xcodeproj -scheme Spotier -destination 'platform=macOS' test`
-- [x] Run the iOS build command for the repo's configured iOS scheme once the target exists. Current project has no iOS scheme or target.
-- [x] Run the tvOS build command for the repo's configured tvOS scheme once the target exists. Current project has no tvOS scheme or target.
+- [x] Run Swift core iOS SDK typecheck: `xcrun swiftc -typecheck $(find SpotierCore -name '*.swift' -print | sort) -sdk $(xcrun --sdk iphoneos --show-sdk-path) -target arm64-apple-ios15.0 -module-name SpotierCore`.
+- [x] Run Swift core tvOS SDK typecheck: `xcrun swiftc -typecheck $(find SpotierCore -name '*.swift' -print | sort) -sdk $(xcrun --sdk appletvos --show-sdk-path) -target arm64-apple-tvos17.0 -module-name SpotierCore`.
 - [x] Launch the macOS app.
 - [ ] Start VPN tunnel. Blocked for Debug build by existing TestFlight-created `Spotier VPN` profile signature requirement; `nesessionmanager` rejects the Development-signed Debug provider.
 - [ ] Confirm Packet Tunnel logs show Swift `MeshEngine` startup. Blocked until the VPN profile is recreated by the Debug app or verified from a matching-signed install.
@@ -476,8 +476,8 @@
 - [ ] Host app can start and stop the tunnel. Blocked for Debug build by existing TestFlight-created VPN profile signature requirement.
 - [ ] Host app can display running info from Swift core. Blocked until the Debug provider can stay connected.
 - [x] macOS build passes.
-- [x] iOS build passes if target exists. Current project has no iOS scheme or target.
-- [x] tvOS build passes if target exists. Current project has no tvOS scheme or target.
+- [x] Swift core typechecks against the iOS SDK.
+- [x] Swift core typechecks against the tvOS SDK. `NEPacketTunnelFlow` requires tvOS 17.0, so the Swift Package declares tvOS 17 as the core package floor.
 - [x] The app and extension contain no Rust build dependency needed for runtime. `EasyTierCore/` source still exists because `EasyTierCore/easytier-patched` has pre-existing uncommitted changes.
 
 ## Post-Plan EasyTier Parity Hardening
@@ -494,6 +494,7 @@
 - [x] Treat IPv4/IPv6 network last-address destinations as mesh fan-out using the configured prefix length.
 - [x] Respond to ICMP echo requests sent to the MagicDNS resolver address.
 - [x] Compute IPv4 UDP checksums for MagicDNS DNS responses.
+- [x] Add a Swift Package entry point for `SpotierCore` covering iOS, tvOS, and macOS source-level builds.
 
 ## Explicitly Out Of Scope
 
