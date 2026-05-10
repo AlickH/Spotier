@@ -473,8 +473,8 @@
 - [x] Route convergence is covered by tests.
 - [x] Relay transport is covered by tests.
 - [x] NAT candidate exchange is covered by tests.
-- [ ] Host app can start and stop the tunnel.
-- [ ] Host app can display running info from Swift core.
+- [ ] Host app can start and stop the tunnel. Blocked for Debug build by existing TestFlight-created VPN profile signature requirement.
+- [ ] Host app can display running info from Swift core. Blocked until the Debug provider can stay connected.
 - [x] macOS build passes.
 - [x] iOS build passes if target exists. Current project has no iOS scheme or target.
 - [x] tvOS build passes if target exists. Current project has no tvOS scheme or target.
@@ -482,11 +482,11 @@
 
 ## Explicitly Out Of Scope
 
-- [ ] No Linux support.
-- [ ] No Windows support.
-- [ ] No Android support.
-- [ ] No OpenWrt support.
-- [ ] No privileged helper replacement.
-- [ ] No QUIC transport in the first complete Swift core unless UDP and relay are already passing end-to-end tests.
-- [ ] No WireGuard portal until native Spotier peer-to-peer and relay data paths are complete.
-- [ ] No compatibility layer that keeps Rust alive behind Swift wrappers.
+- [x] No Linux support.
+- [x] No Windows support.
+- [x] No Android support.
+- [x] No OpenWrt support.
+- [x] No privileged helper replacement.
+- [x] No QUIC transport in the first complete Swift core unless UDP and relay are already passing end-to-end tests.
+- [x] No WireGuard portal until native Spotier peer-to-peer and relay data paths are complete.
+- [x] No compatibility layer that keeps Rust alive behind Swift wrappers.
