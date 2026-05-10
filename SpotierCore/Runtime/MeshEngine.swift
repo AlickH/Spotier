@@ -193,6 +193,10 @@ final class MeshEngine {
                     recordLatencyPong(from: inbound.frame.sender)
                 }
                 if case .control(.routeUpdate(let payload)) = inbound.frame.payload {
+                    guard peerManager?.session(for: inbound.frame.sender)?.health == .established else {
+                        events.append(.logLine("Dropped unauthenticated route update"))
+                        return
+                    }
                     let update = try RouteUpdate(wireData: payload, sender: inbound.frame.sender)
                     routeTable.apply(update)
                     events.append(.routeChanged)
